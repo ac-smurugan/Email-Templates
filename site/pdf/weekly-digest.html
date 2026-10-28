@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><base target="_blank">
+<meta charset="utf-8">
+<title>Example Corp Weekly Digest 2026-10-28</title>
+<style>
+@page{size:A4 portrait;margin:22mm 14mm 20mm 14mm;background-color:#ebeef3;
+@top-center{content:element(pdfHeader);vertical-align:bottom;padding-bottom:4mm}
+@bottom-left{content:element(pdfFooter);vertical-align:top;padding-top:4mm}
+@bottom-right{content:"Page " counter(page) " of " counter(pages);vertical-align:top;padding-top:4mm;text-align:right;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#676a71}}
+html,body{margin:0;padding:0;background-color:#ebeef3}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#15181e}
+table{border-collapse:collapse;border-spacing:0}
+td,th{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;vertical-align:top;padding:0}
+img{border:0}
+a{color:#4a35d6;text-decoration:none}
+p{margin:0}
+#pdf-header{position:running(pdfHeader)}
+#pdf-footer{position:running(pdfFooter);font-size:12px;line-height:18px;color:#676a71}
+.brand-logo{padding-right:8px;vertical-align:middle}
+.brand-name{font-size:14px;line-height:20px;font-weight:600;color:#15181e;vertical-align:middle}
+.brand-report{font-size:13px;line-height:20px;color:#676a71;text-align:right;vertical-align:middle}
+.card{background-color:#ffffff;border-radius:14px;padding:24px 28px;margin:0 0 12px;page-break-inside:avoid}
+.card.flow{page-break-inside:auto}
+.label{font-size:13px;line-height:20px;color:#676a71;margin:0 0 8px}
+.eyebrow{font-size:13px;line-height:20px;color:#676a71;margin:0 0 6px}
+.title{font-size:21px;line-height:28px;font-weight:600;color:#15181e;margin:0}
+.subtitle{font-size:13px;line-height:20px;color:#676a71;margin:2px 0 0}
+.heading{font-size:16px;line-height:22px;font-weight:600;color:#15181e;margin:0 0 4px}
+.section{margin-top:18px;page-break-inside:avoid}
+.section.flow{page-break-inside:auto}
+.well{background-color:#f4f5f6;border-radius:10px;padding:14px 16px;page-break-inside:avoid}
+.gap{margin-top:12px}
+.details{width:100%}
+.details td{padding:3px 0;font-size:14px;line-height:20px;color:#15181e}
+.details td.k{width:112px;padding-right:12px;font-size:13px;line-height:20px;color:#676a71}
+.stats{width:100%}
+.stats td{padding-right:12px}
+.stat-label{font-size:12px;line-height:16px;color:#676a71}
+.stat-label.two{height:32px}
+.score{font-size:15px;line-height:22px;font-weight:600;color:#15181e}
+.stat-value{margin-top:2px;font-size:22px;line-height:28px;font-weight:600;color:#15181e}
+.rows{width:100%;-fs-table-paginate:paginate;font-size:13px;line-height:19px;color:#15181e}
+.rows thead{display:table-header-group}
+.rows tr{page-break-inside:avoid}
+.rows th{padding:9px 12px 9px 0;border-bottom:1px solid #ecedef;text-align:left;font-size:12px;line-height:16px;font-weight:500;color:#676a71}
+.rows td{padding:9px 12px 9px 0;border-bottom:1px solid #ecedef}
+.rows .end{padding-right:0}
+.right{text-align:right}
+.nowrap{white-space:nowrap}
+.muted{color:#676a71}
+.more{margin-top:10px;font-size:13px;line-height:20px;text-align:right}
+.empty{font-size:13px;line-height:20px;color:#676a71}
+.dot{display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:6px}
+.trend-up{display:inline-block;width:0;height:0;margin-left:6px;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid #c4252b}
+.trend-down{display:inline-block;width:0;height:0;margin-left:6px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #157a41}
+.trend-flat{display:inline-block;width:10px;height:3px;margin-left:6px;background-color:#a1a7b2}
+.break-content{word-wrap:break-word;white-space:normal}
+.prose{font-size:14px;line-height:21px;color:#15181e;word-wrap:break-word}
+.prose p{margin:0 0 8px}
+.prose h1,.prose h2,.prose h3,.prose h4{font-weight:600;color:#15181e;margin:14px 0 6px}
+.prose h1{font-size:18px;line-height:24px}
+.prose h2{font-size:16px;line-height:22px}
+.prose h3,.prose h4{font-size:14px;line-height:21px}
+.prose img{max-width:100%}
+.prose pre{background-color:#f4f5f6;border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-wrap:break-word;font-size:12px;line-height:18px}
+.prose pre>code{white-space:pre-wrap;word-wrap:break-word}
+.prose table{border-collapse:collapse}
+.prose td,.prose th{border-bottom:1px solid #ecedef;padding:4px 8px 4px 0}
+.toc{width:100%;font-size:14px;line-height:20px}
+.toc td{padding:8px 0;border-bottom:1px solid #ecedef}
+.toc tr{page-break-inside:avoid}
+.toc .sub{padding-left:16px;font-size:13px}
+.toc .sub a{color:#15181e}
+.toc .page{width:48px;text-align:right;color:#676a71}
+#toc .page-number::after{content:target-counter(attr(href),page)}
+.page-break{page-break-after:always}
+.part{font-size:16px;line-height:22px;font-weight:600;color:#15181e;margin:4px 4px 12px}
+.finding-title{font-size:18px;line-height:24px;font-weight:600;margin:0}
+.pairs{width:100%}
+.pairs td{padding:3px 0;font-size:13px;line-height:19px;color:#15181e}
+.pairs td.k{width:20%;padding-right:10px;color:#676a71}
+.pairs td.v{width:30%;padding-right:16px}
+.pairs tr{page-break-inside:avoid}
+.cvss th,.cvss td{font-size:11px;line-height:15px;padding-right:8px}
+.docs{margin:0;padding:0 0 0 18px}
+.docs li{margin:0 0 8px}
+.docs img{max-width:100%}
+@media screen{body{display:table;width:182mm;margin:24px auto;padding:0 16px}#pdf-header{margin-bottom:12px}#pdf-footer{display:table-footer-group}}
+</style>
+</head>
+<body>
+<div id="pdf-header"><table width="100%"><tr>
+<td class="brand-logo" width="30"><img src="/sample-logo.svg" height="22" alt=""></td>
+<td class="brand-name">ArmorCode</td>
+<td class="brand-report">Weekly Digest</td>
+</tr></table></div>
+<div id="pdf-footer">ArmorCode Inc. · 2100 Geng Road, Suite 210, Palo Alto, CA 94303 USA</div>
+<div id="Oct 28, 2026">
+<div class="card">
+<p class="eyebrow"><span class="dot" style="background-color:#624cf5"></span>Weekly Digest</p>
+<p class="title">Example Corp Weekly Digest</p>
+<div class="gap"><div class="well"><table class="details">
+<tr><td class="k">Account</td><td>Example Corp</td></tr>
+<tr><td class="k">Organization</td><td>Payments</td></tr>
+<tr><td class="k">Squad</td><td>Checkout, Billing, Platform Security</td></tr>
+<tr><td class="k">Report Date</td><td>Oct 28, 2026</td></tr>
+</table></div></div>
+</div>
+<div class="card flow">
+<table width="100%"><tr>
+<td><p class="heading">Payments Platform <span class="muted">(3)</span></p></td>
+<td width="150" class="right">
+<span class="dot" style="background-color:#e5484d"></span>
+<span class="score" style="">
+82/100
+</span>
+<span class="trend-up"></span>
+</td>
+</tr></table>
+<div class="well gap">
+<table width="100%"><tr>
+<td><p class="stat-label">Service</p><p class="heading">payments-api</p></td>
+<td width="150" class="right"><p class="stat-label">Risk Score</p>
+<p>
+<span class="dot" style="background-color:#e5484d"></span>
+<span class="score" style="">
+88/100
+</span>
+<span class="trend-up"></span>
+</p></td>
+</tr></table>
+<div class="gap"><table class="stats"><tr>
+<td width="20%"><p class="stat-label two">Critical Open Findings</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/findings?filters=%7B%22severity%22%3A%5B%22Critical%22%5D%2C%22status%22%3A%5B%22Open%22%5D%7D">6</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Overdue</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/findings?filters=%7B%22slaStatus%22%3A%5B%22BREACHED%22%5D%7D">14</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Due Within 7 Days</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/findings?filters=%7B%22slaStatus%22%3A%5B%22DUE_IN_7_DAYS%22%5D%7D">5</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Overdue</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/ticketListing?filters=%7B%22ticketSla%22%3A%5B%22BREACHED%22%5D%7D">3</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Due Within 7 Days</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/ticketListing?filters=%7B%22ticketSla%22%3A%5B%22DUE_IN_7_DAYS%22%5D%7D">2</a>
+</p></td>
+</tr></table></div>
+</div>
+<div class="well gap">
+<table width="100%"><tr>
+<td><p class="stat-label">Service</p><p class="heading">billing-service</p></td>
+<td width="150" class="right"><p class="stat-label">Risk Score</p>
+<p>
+<span class="dot" style="background-color:#f2711c"></span>
+<span class="score" style="">
+64/100
+</span>
+<span class="trend-down"></span>
+</p></td>
+</tr></table>
+<div class="gap"><table class="stats"><tr>
+<td width="20%"><p class="stat-label two">Critical Open Findings</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/findings?filters=%7B%22severity%22%3A%5B%22Critical%22%5D%2C%22status%22%3A%5B%22Open%22%5D%7D">2</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Overdue</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Due Within 7 Days</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/findings?filters=%7B%22slaStatus%22%3A%5B%22DUE_IN_7_DAYS%22%5D%7D">3</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Overdue</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Due Within 7 Days</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/ticketListing?filters=%7B%22ticketSla%22%3A%5B%22DUE_IN_7_DAYS%22%5D%7D">1</a>
+</p></td>
+</tr></table></div>
+</div>
+<div class="well gap">
+<table width="100%"><tr>
+<td><p class="stat-label">Service</p><p class="heading">invoice-worker</p></td>
+<td width="150" class="right"><p class="stat-label">Risk Score</p>
+<p>
+<span class="dot" style="background-color:#e2a400"></span>
+<span class="score" style="">
+41/100
+</span>
+<span class="trend-flat"></span>
+</p></td>
+</tr></table>
+<div class="gap"><table class="stats"><tr>
+<td width="20%"><p class="stat-label two">Critical Open Findings</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Overdue</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/findings?filters=%7B%22slaStatus%22%3A%5B%22BREACHED%22%5D%7D">3</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Due Within 7 Days</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Overdue</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Due Within 7 Days</p><p class="stat-value">
+0
+</p></td>
+</tr></table></div>
+</div>
+
+</div>
+<div class="card flow">
+<table width="100%"><tr>
+<td><p class="heading">Customer Portal <span class="muted">(2)</span></p></td>
+<td width="150" class="right">
+<span class="dot" style="background-color:#1f9d55"></span>
+<span class="score" style="">
+35/100
+</span>
+<span class="trend-down"></span>
+</td>
+</tr></table>
+<div class="well gap">
+<table width="100%"><tr>
+<td><p class="stat-label">Service</p><p class="heading">checkout-web</p></td>
+<td width="150" class="right"><p class="stat-label">Risk Score</p>
+<p>
+<span class="score" style="background-color:#f4f5f6;color:#15181e;border-radius:4px;padding:0 6px">
+N/A
+</span>
+<span class="trend-flat"></span>
+</p></td>
+</tr></table>
+<div class="gap"><table class="stats"><tr>
+<td width="20%"><p class="stat-label two">Critical Open Findings</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Overdue</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/findings?filters=%7B%22slaStatus%22%3A%5B%22BREACHED%22%5D%7D">1</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Due Within 7 Days</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/findings?filters=%7B%22slaStatus%22%3A%5B%22DUE_IN_7_DAYS%22%5D%7D">2</a>
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Overdue</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Due Within 7 Days</p><p class="stat-value"><a target="_blank" href="https://armorcode.example.com/#/ticketListing?filters=%7B%22ticketSla%22%3A%5B%22DUE_IN_7_DAYS%22%5D%7D">1</a>
+</p></td>
+</tr></table></div>
+</div>
+<div class="well gap">
+<table width="100%"><tr>
+<td><p class="stat-label">Service</p><p class="heading">account-settings</p></td>
+<td width="150" class="right"><p class="stat-label">Risk Score</p>
+<p>
+<span class="dot" style="background-color:#1f9d55"></span>
+<span class="score" style="">
+12/100
+</span>
+<span class="trend-flat"></span>
+</p></td>
+</tr></table>
+<div class="gap"><table class="stats"><tr>
+<td width="20%"><p class="stat-label two">Critical Open Findings</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Overdue</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Findings Due Within 7 Days</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Overdue</p><p class="stat-value">
+0
+</p></td>
+<td width="20%"><p class="stat-label two">Tickets Due Within 7 Days</p><p class="stat-value">
+0
+</p></td>
+</tr></table></div>
+</div>
+
+</div>
+<div class="card flow">
+<table width="100%"><tr>
+<td><p class="heading">Internal Tools <span class="muted">(0)</span></p></td>
+<td width="150" class="right">
+<span class="dot" style="background-color:#a1a7b2"></span>
+<span class="score" style="">
+N/A
+</span>
+<span class="trend-flat"></span>
+</td>
+</tr></table>
+<div class="well gap empty">No Service</div>
+
+</div>
+</div>
+</body>
+</html>

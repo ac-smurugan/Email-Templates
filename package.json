@@ -7,7 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "node src/build.ts && node src/readme.ts",
+    "build": "node src/build.ts && node src/readme.ts && node src/static.ts",
     "preview": "node --watch-path=src src/preview/server.ts",
     "build:site": "node src/static.ts"
   }

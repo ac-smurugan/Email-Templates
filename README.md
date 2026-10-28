@@ -11,6 +11,7 @@ pnpm preview
 ```
 
 - `pnpm build` writes `dist/<id>.html` and `dist/<id>.txt` for every email, `dist/pdf/<id>.html` for every PDF report, and `dist/emails.json` (each email's subject, preview line and placeholders). It also checks every template (see [Checks](#checks)) and regenerates the placeholder tables at the end of this README.
+- `pnpm build` also writes `site/`, the preview as a static site that Cloudflare serves (see `wrangler.jsonc`). `site/` is committed, so Cloudflare needs no build step: after changing a template, run `pnpm build` and commit `site/` with it.
 - `pnpm preview` serves http://localhost:4300. It lists every email in a Desktop (640px) or Phone (375px) frame, Light or Dark, with its plain text beside it, and every PDF report at A4 width. Only the preview fills placeholders, with sample values (John Smith at Example Corp). It restarts when a file in `src/` changes.
 
 You need Node 24 or later, which runs the TypeScript directly. There are no dependencies.

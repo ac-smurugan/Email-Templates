@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><base target="_blank">
+<meta charset="utf-8">
+<title>Payments Platform Pentest 2026 - Project Report</title>
+<style>
+@page{size:A4 portrait;margin:22mm 14mm 20mm 14mm;background-color:#ebeef3;
+@top-center{content:element(pdfHeader);vertical-align:bottom;padding-bottom:4mm}
+@bottom-left{content:element(pdfFooter);vertical-align:top;padding-top:4mm}
+@bottom-right{content:"Page " counter(page) " of " counter(pages);vertical-align:top;padding-top:4mm;text-align:right;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:18px;color:#676a71}}
+html,body{margin:0;padding:0;background-color:#ebeef3}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#15181e}
+table{border-collapse:collapse;border-spacing:0}
+td,th{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,Helvetica,Arial,sans-serif;vertical-align:top;padding:0}
+img{border:0}
+a{color:#4a35d6;text-decoration:none}
+p{margin:0}
+#pdf-header{position:running(pdfHeader)}
+#pdf-footer{position:running(pdfFooter);font-size:12px;line-height:18px;color:#676a71}
+.brand-logo{padding-right:8px;vertical-align:middle}
+.brand-name{font-size:14px;line-height:20px;font-weight:600;color:#15181e;vertical-align:middle}
+.brand-report{font-size:13px;line-height:20px;color:#676a71;text-align:right;vertical-align:middle}
+.card{background-color:#ffffff;border-radius:14px;padding:24px 28px;margin:0 0 12px;page-break-inside:avoid}
+.card.flow{page-break-inside:auto}
+.label{font-size:13px;line-height:20px;color:#676a71;margin:0 0 8px}
+.eyebrow{font-size:13px;line-height:20px;color:#676a71;margin:0 0 6px}
+.title{font-size:21px;line-height:28px;font-weight:600;color:#15181e;margin:0}
+.subtitle{font-size:13px;line-height:20px;color:#676a71;margin:2px 0 0}
+.heading{font-size:16px;line-height:22px;font-weight:600;color:#15181e;margin:0 0 4px}
+.section{margin-top:18px;page-break-inside:avoid}
+.section.flow{page-break-inside:auto}
+.well{background-color:#f4f5f6;border-radius:10px;padding:14px 16px;page-break-inside:avoid}
+.gap{margin-top:12px}
+.details{width:100%}
+.details td{padding:3px 0;font-size:14px;line-height:20px;color:#15181e}
+.details td.k{width:112px;padding-right:12px;font-size:13px;line-height:20px;color:#676a71}
+.stats{width:100%}
+.stats td{padding-right:12px}
+.stat-label{font-size:12px;line-height:16px;color:#676a71}
+.stat-label.two{height:32px}
+.score{font-size:15px;line-height:22px;font-weight:600;color:#15181e}
+.stat-value{margin-top:2px;font-size:22px;line-height:28px;font-weight:600;color:#15181e}
+.rows{width:100%;-fs-table-paginate:paginate;font-size:13px;line-height:19px;color:#15181e}
+.rows thead{display:table-header-group}
+.rows tr{page-break-inside:avoid}
+.rows th{padding:9px 12px 9px 0;border-bottom:1px solid #ecedef;text-align:left;font-size:12px;line-height:16px;font-weight:500;color:#676a71}
+.rows td{padding:9px 12px 9px 0;border-bottom:1px solid #ecedef}
+.rows .end{padding-right:0}
+.right{text-align:right}
+.nowrap{white-space:nowrap}
+.muted{color:#676a71}
+.more{margin-top:10px;font-size:13px;line-height:20px;text-align:right}
+.empty{font-size:13px;line-height:20px;color:#676a71}
+.dot{display:inline-block;width:8px;height:8px;border-radius:4px;margin-right:6px}
+.trend-up{display:inline-block;width:0;height:0;margin-left:6px;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid #c4252b}
+.trend-down{display:inline-block;width:0;height:0;margin-left:6px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #157a41}
+.trend-flat{display:inline-block;width:10px;height:3px;margin-left:6px;background-color:#a1a7b2}
+.break-content{word-wrap:break-word;white-space:normal}
+.prose{font-size:14px;line-height:21px;color:#15181e;word-wrap:break-word}
+.prose p{margin:0 0 8px}
+.prose h1,.prose h2,.prose h3,.prose h4{font-weight:600;color:#15181e;margin:14px 0 6px}
+.prose h1{font-size:18px;line-height:24px}
+.prose h2{font-size:16px;line-height:22px}
+.prose h3,.prose h4{font-size:14px;line-height:21px}
+.prose img{max-width:100%}
+.prose pre{background-color:#f4f5f6;border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-wrap:break-word;font-size:12px;line-height:18px}
+.prose pre>code{white-space:pre-wrap;word-wrap:break-word}
+.prose table{border-collapse:collapse}
+.prose td,.prose th{border-bottom:1px solid #ecedef;padding:4px 8px 4px 0}
+.toc{width:100%;font-size:14px;line-height:20px}
+.toc td{padding:8px 0;border-bottom:1px solid #ecedef}
+.toc tr{page-break-inside:avoid}
+.toc .sub{padding-left:16px;font-size:13px}
+.toc .sub a{color:#15181e}
+.toc .page{width:48px;text-align:right;color:#676a71}
+#toc .page-number::after{content:target-counter(attr(href),page)}
+.page-break{page-break-after:always}
+.part{font-size:16px;line-height:22px;font-weight:600;color:#15181e;margin:4px 4px 12px}
+.finding-title{font-size:18px;line-height:24px;font-weight:600;margin:0}
+.pairs{width:100%}
+.pairs td{padding:3px 0;font-size:13px;line-height:19px;color:#15181e}
+.pairs td.k{width:20%;padding-right:10px;color:#676a71}
+.pairs td.v{width:30%;padding-right:16px}
+.pairs tr{page-break-inside:avoid}
+.cvss th,.cvss td{font-size:11px;line-height:15px;padding-right:8px}
+.docs{margin:0;padding:0 0 0 18px}
+.docs li{margin:0 0 8px}
+.docs img{max-width:100%}
+@media screen{body{display:table;width:182mm;margin:24px auto;padding:0 16px}#pdf-header{margin-bottom:12px}#pdf-footer{display:table-footer-group}}
+</style>
+</head>
+<body>
+<div id="pdf-header"><table width="100%"><tr>
+<td class="brand-logo" width="30"><img src="/sample-logo.svg" height="22" alt=""></td>
+<td class="brand-name">ArmorCode</td>
+<td class="brand-report">Project Report</td>
+</tr></table></div>
+<div id="pdf-footer">Confidential: Example Corp<br>ArmorCode Inc. · 2100 Geng Road, Suite 210, Palo Alto, CA 94303 USA</div>
+<div class="card">
+<p class="eyebrow"><span class="dot" style="background-color:#624cf5"></span>Project Report</p>
+<p class="title">Payments Platform Pentest 2026</p>
+<div class="gap">
+<div class="well"><table class="stats"><tr>
+<td width="20%"><p class="stat-label">Findings</p><p class="stat-value">5</p></td>
+<td width="20%"><p class="stat-label"><span class="dot" style="background-color:#e5484d"></span>Critical</p><p class="stat-value">1</p></td>
+<td width="20%"><p class="stat-label"><span class="dot" style="background-color:#f2711c"></span>High</p><p class="stat-value">1</p></td>
+<td width="20%"><p class="stat-label"><span class="dot" style="background-color:#e2a400"></span>Medium</p><p class="stat-value">1</p></td>
+<td width="20%"><p class="stat-label"><span class="dot" style="background-color:#1f9d55"></span>Low</p><p class="stat-value">1</p></td>
+</tr></table></div></div>
+</div>
+<div class="card flow page-break">
+<p class="label">Contents</p>
+<table id="toc" class="toc">
+<tr><td><a href="#exec-summary">Payments Platform Pentest 2026 Details</a></td><td class="page"><div href="#exec-summary" class="page-number"></div></td></tr>
+<tr><td class="sub break-content"><a href="#h10">Scope</a></td><td class="page"><div href="#h10" class="page-number"></div></td></tr>
+<tr><td class="sub break-content"><a href="#h11">Methodology</a></td><td class="page"><div href="#h11" class="page-number"></div></td></tr>
+<tr><td><a href="#summary-findings">Summary of Findings</a></td><td class="page"><div href="#summary-findings" class="page-number"></div></td></tr>
+<tr><td><a href="#detailed-findings">Detailed Findings</a></td><td class="page"><div href="#detailed-findings" class="page-number"></div></td></tr>
+<tr><td class="sub break-content"><a href="#2384715">[2384715]
+Remote code execution via JNDI lookup in l...
+</a></td><td class="page"><div href="#2384715" class="page-number"></div></td></tr>
+<tr><td class="sub break-content"><a href="#2384722">[2384722]
+SQL injection in the /api/v2/orders search pa...
+</a></td><td class="page"><div href="#2384722" class="page-number"></div></td></tr>
+<tr><td class="sub break-content"><a href="#2384730">[2384730]
+Outdated OpenSSL 3.0.7 in the payments-api ba...
+</a></td><td class="page"><div href="#2384730" class="page-number"></div></td></tr>
+<tr><td class="sub break-content"><a href="#2384741">[2384741]
+Missing Content-Security-Policy header on che...
+</a></td><td class="page"><div href="#2384741" class="page-number"></div></td></tr>
+<tr><td class="sub break-content"><a href="#2384756">[2384756]
+Server banner discloses the nginx version
+</a></td><td class="page"><div href="#2384756" class="page-number"></div></td></tr>
+<tr><td><a href="#additional-document">Additional Documents</a></td><td class="page"><div href="#additional-document" class="page-number"></div></td></tr>
+</table>
+</div>
+<div id="exec-summary" class="card flow page-break">
+<p class="label">Payments Platform Pentest 2026 Details</p>
+<div class="prose">
+<h1 id="h10">Scope</h1><p>The payments platform: payments-api, billing-service and the checkout web app, in production.</p><h1 id="h11">Methodology</h1><p>Automated scans (SCA, DAST, container) from September 14 to October 27, 2026, triaged by John Smith.</p>
+</div>
+</div>
+<div id="summary-findings" class="card flow page-break">
+<p class="label">Summary of Findings</p>
+<table id="summary-table" class="rows">
+<thead><tr><th>Summary</th><th width="64" class="right">CVSS Score</th><th width="110">Severity</th><th width="110" class="end">Status</th></tr></thead>
+<tr>
+<td class="break-content">Remote code execution via JNDI lookup in log4j-core 2.14.1</td>
+<td class="right"> 9.8 </td>
+<td>
+<span class="dot" style="background-color:#e5484d"></span>
+Critical
+</td>
+<td class="end">
+Active
+</td>
+</tr>
+<tr>
+<td class="break-content">SQL injection in the /api/v2/orders search parameter allows reading arbitrary customer records</td>
+<td class="right"> 8.6 </td>
+<td>
+<span class="dot" style="background-color:#f2711c"></span>
+High
+</td>
+<td class="end">
+in_progress
+</td>
+</tr>
+<tr>
+<td class="break-content">Outdated OpenSSL 3.0.7 in the payments-api base image</td>
+<td class="right"> 5.9 </td>
+<td>
+<span class="dot" style="background-color:#e2a400"></span>
+Medium
+</td>
+<td class="end">
+Risk Accepted
+</td>
+</tr>
+<tr>
+<td class="break-content">Missing Content-Security-Policy header on checkout.example.com</td>
+<td class="right"> N/A </td>
+<td>
+<span class="dot" style="background-color:#1f9d55"></span>
+Low
+</td>
+<td class="end">
+Not an Issue
+</td>
+</tr>
+<tr>
+<td class="break-content">Server banner discloses the nginx version</td>
+<td class="right"> N/A </td>
+<td>
+<span class="dot" style="background-color:#a1a7b2"></span>
+Info
+</td>
+<td class="end">
+triage
+</td>
+</tr>
+</table>
+</div>
+<p id="detailed-findings" class="part">Detailed Findings</p>
+<div id="2384715" class="card flow" style="page-break-after: always;">
+<p class="finding-title break-content"><a target="_blank" href="https://armorcode.example.com/#/findings/example-corp/1042/2384715">[2384715] Remote code execution via JNDI lookup in log4j-core 2.14.1</a></p>
+<div class="section">
+<p class="label">Ticket</p>
+<p>
+<a target="_blank" href="https://example-corp.atlassian.example.com/browse/SEC-4821">SEC-4821</a>&nbsp;&nbsp;
+<a target="_blank" href="https://example-corp.atlassian.example.com/browse/SEC-4822">SEC-4822</a>&nbsp;&nbsp;
+</p>
+</div>
+<div class="section">
+<p class="label">General Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Severity</td>
+<td class="v">
+<span class="dot" style="background-color:#e5484d"></span>
+Critical
+</td>
+<td class="k">Finding Category</td>
+<td class="v">Vulnerable Dependency</td>
+</tr>
+<tr>
+<td class="k">Status</td>
+<td class="v">
+Active
+</td>
+<td class="k"></td><td class="v"></td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Vulnerability Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">CVE</td>
+<td class="v">EXM-2026-4410</td>
+<td class="k">CWE</td>
+<td class="v">CWE-917</td>
+</tr>
+<tr>
+<td class="k">First Seen</td>
+<td class="v">Sep 14, 2026</td>
+<td class="k">Last Seen</td>
+<td class="v">Oct 27, 2026</td>
+</tr>
+<tr>
+<td class="k">Environment</td>
+<td class="v">Production</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Tool Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Tool</td>
+<td class="v break-content">Snyk</td>
+<td class="k">Tool Severity</td>
+<td class="v"><span class="dot" style="background-color:#e5484d"></span>Critical</td>
+</tr>
+<tr>
+<td class="k">Scan Type</td>
+<td class="v break-content">SCA</td>
+<td class="k">Rule</td>
+<td class="v break-content">snyk-rule-715</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">CVSSv3 Vector</p>
+<table id="cvss-table" class="rows cvss">
+<thead><tr><th>Attack Vector</th><th>Attack Complexity</th><th>Privileges Required</th><th>User Interaction</th><th>Scope</th><th>Confidentiality</th><th>Integrity</th><th>Availability</th></tr></thead>
+<tr>
+<td>
+Network
+</td>
+<td>
+Low
+</td>
+<td>
+None
+</td>
+<td>
+None
+</td>
+<td>
+Changed
+</td>
+<td>
+High
+</td>
+<td>
+High
+</td>
+<td>
+High
+</td>
+</tr>
+</table>
+</div>
+<div class="section flow">
+<p class="label">Summary</p>
+<div class="prose break-content">
+Remote code execution via JNDI lookup in log4j-core 2.14.1
+</div>
+</div>
+<div class="section flow">
+<p class="label">Description</p>
+<div class="prose break-content">
+<p>Remote code execution via JNDI lookup in log4j-core 2.14.1 was found in <code>example-corp/payments-api</code>.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Steps To Reproduce</p>
+<div class="prose break-content">
+<ol><li>Sign in as a test customer.</li><li>Send the request below with the payload in the search field.</li></ol><pre><code>GET /api/v2/orders?q=%27%20OR%201%3D1-- HTTP/1.1
+Host: api.example.com</code></pre>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Mitigation</p>
+<div class="prose break-content">
+<p>Upgrade to the patched version and redeploy. Until then, block the pattern at the WAF.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Impact</p>
+<div class="prose break-content">
+<p>An unauthenticated attacker could read or change customer data.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Affected Components</p>
+<div class="prose break-content">
+<ul><li>example-corp/payments-api</li><li>example-corp/billing-service</li></ul>
+</div>
+</div>
+</div>
+<div id="2384722" class="card flow" style="page-break-after: always;">
+<p class="finding-title break-content"><a target="_blank" href="https://armorcode.example.com/#/findings/example-corp/1042/2384722">[2384722] SQL injection in the /api/v2/orders search parameter allows reading arbitrary customer records</a></p>
+<div class="section">
+<p class="label">Ticket</p>
+<p>
+<a target="_blank" href="https://example-corp.atlassian.example.com/browse/SEC-4830">SEC-4830</a>&nbsp;&nbsp;
+</p>
+</div>
+<div class="section">
+<p class="label">General Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Severity</td>
+<td class="v">
+<span class="dot" style="background-color:#f2711c"></span>
+High
+</td>
+<td class="k">Finding Category</td>
+<td class="v">Injection</td>
+</tr>
+<tr>
+<td class="k">Status</td>
+<td class="v">
+in_progress
+</td>
+<td class="k"></td><td class="v"></td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Vulnerability Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">CVE</td>
+<td class="v">N/A</td>
+<td class="k">CWE</td>
+<td class="v">CWE-89</td>
+</tr>
+<tr>
+<td class="k">First Seen</td>
+<td class="v">Sep 14, 2026</td>
+<td class="k">Last Seen</td>
+<td class="v">Oct 27, 2026</td>
+</tr>
+<tr>
+<td class="k">Environment</td>
+<td class="v">Production</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Tool Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Tool</td>
+<td class="v break-content">Burp Suite</td>
+<td class="k">Tool Severity</td>
+<td class="v"><span class="dot" style="background-color:#f2711c"></span>High</td>
+</tr>
+<tr>
+<td class="k">Scan Type</td>
+<td class="v break-content">DAST</td>
+<td class="k">Rule</td>
+<td class="v break-content">burp-suite-rule-722</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">CVSSv3 Vector</p>
+<table id="cvss-table" class="rows cvss">
+<thead><tr><th>Attack Vector</th><th>Attack Complexity</th><th>Privileges Required</th><th>User Interaction</th><th>Scope</th><th>Confidentiality</th><th>Integrity</th><th>Availability</th></tr></thead>
+<tr>
+<td>
+Network
+</td>
+<td>
+Low
+</td>
+<td>
+None
+</td>
+<td>
+None
+</td>
+<td>
+Unchanged
+</td>
+<td>
+High
+</td>
+<td>
+Low
+</td>
+<td>
+None
+</td>
+</tr>
+</table>
+</div>
+<div class="section flow">
+<p class="label">Summary</p>
+<div class="prose break-content">
+SQL injection in the /api/v2/orders search parameter allows reading arbitrary customer records
+</div>
+</div>
+<div class="section flow">
+<p class="label">Description</p>
+<div class="prose break-content">
+<p>SQL injection in the /api/v2/orders search parameter allows reading arbitrary customer records was found in <code>example-corp/payments-api</code>.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Steps To Reproduce</p>
+<div class="prose break-content">
+<ol><li>Sign in as a test customer.</li><li>Send the request below with the payload in the search field.</li></ol><pre><code>GET /api/v2/orders?q=%27%20OR%201%3D1-- HTTP/1.1
+Host: api.example.com</code></pre>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Mitigation</p>
+<div class="prose break-content">
+<p>Upgrade to the patched version and redeploy. Until then, block the pattern at the WAF.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Impact</p>
+<div class="prose break-content">
+<p>An unauthenticated attacker could read or change customer data.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Affected Components</p>
+<div class="prose break-content">
+<ul><li>example-corp/payments-api</li><li>example-corp/billing-service</li></ul>
+</div>
+</div>
+</div>
+<div id="2384730" class="card flow" style="page-break-after: always;">
+<p class="finding-title break-content"><a target="_blank" href="https://armorcode.example.com/#/findings/example-corp/1042/2384730">[2384730] Outdated OpenSSL 3.0.7 in the payments-api base image</a></p>
+<div class="section">
+<p class="label">Ticket</p>
+<p>
+N/A
+</p>
+</div>
+<div class="section">
+<p class="label">General Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Severity</td>
+<td class="v">
+<span class="dot" style="background-color:#e2a400"></span>
+Medium
+</td>
+<td class="k">Finding Category</td>
+<td class="v">Container Image</td>
+</tr>
+<tr>
+<td class="k">Status</td>
+<td class="v">
+Risk Accepted
+</td>
+<td class="k"></td><td class="v"></td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Vulnerability Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">CVE</td>
+<td class="v">EXM-2026-1187</td>
+<td class="k">CWE</td>
+<td class="v">CWE-89</td>
+</tr>
+<tr>
+<td class="k">First Seen</td>
+<td class="v">Sep 14, 2026</td>
+<td class="k">Last Seen</td>
+<td class="v">Oct 27, 2026</td>
+</tr>
+<tr>
+<td class="k">Environment</td>
+<td class="v">Production</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Tool Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Tool</td>
+<td class="v break-content">Wiz</td>
+<td class="k">Tool Severity</td>
+<td class="v"><span class="dot" style="background-color:#e2a400"></span>Medium</td>
+</tr>
+<tr>
+<td class="k">Scan Type</td>
+<td class="v break-content">DAST</td>
+<td class="k">Rule</td>
+<td class="v break-content">wiz-rule-730</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">CVSSv3 Vector</p>
+<table id="cvss-table" class="rows cvss">
+<thead><tr><th>Attack Vector</th><th>Attack Complexity</th><th>Privileges Required</th><th>User Interaction</th><th>Scope</th><th>Confidentiality</th><th>Integrity</th><th>Availability</th></tr></thead>
+<tr>
+<td>
+Network
+</td>
+<td>
+High
+</td>
+<td>
+None
+</td>
+<td>
+None
+</td>
+<td>
+Unchanged
+</td>
+<td>
+High
+</td>
+<td>
+None
+</td>
+<td>
+N/A
+</td>
+</tr>
+</table>
+</div>
+<div class="section flow">
+<p class="label">Summary</p>
+<div class="prose break-content">
+Outdated OpenSSL 3.0.7 in the payments-api base image
+</div>
+</div>
+<div class="section flow">
+<p class="label">Description</p>
+<div class="prose break-content">
+<p>Outdated OpenSSL 3.0.7 in the payments-api base image was found in <code>example-corp/payments-api</code>.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Steps To Reproduce</p>
+<div class="prose break-content">
+<ol><li>Sign in as a test customer.</li><li>Send the request below with the payload in the search field.</li></ol><pre><code>GET /api/v2/orders?q=%27%20OR%201%3D1-- HTTP/1.1
+Host: api.example.com</code></pre>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Mitigation</p>
+<div class="prose break-content">
+<p>Upgrade to the patched version and redeploy. Until then, block the pattern at the WAF.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Impact</p>
+<div class="prose break-content">
+<p>An unauthenticated attacker could read or change customer data.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Affected Components</p>
+<div class="prose break-content">
+<ul><li>example-corp/payments-api</li><li>example-corp/billing-service</li></ul>
+</div>
+</div>
+</div>
+<div id="2384741" class="card flow" style="page-break-after: always;">
+<p class="finding-title break-content"><a target="_blank" href="https://armorcode.example.com/#/findings/example-corp/1042/2384741">[2384741] Missing Content-Security-Policy header on checkout.example.com</a></p>
+<div class="section">
+<p class="label">Ticket</p>
+<p>
+N/A
+</p>
+</div>
+<div class="section">
+<p class="label">General Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Severity</td>
+<td class="v">
+<span class="dot" style="background-color:#1f9d55"></span>
+Low
+</td>
+<td class="k">Finding Category</td>
+<td class="v">Security Misconfiguration</td>
+</tr>
+<tr>
+<td class="k">Status</td>
+<td class="v">
+Not an Issue
+</td>
+<td class="k"></td><td class="v"></td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Vulnerability Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">CVE</td>
+<td class="v">N/A</td>
+<td class="k">CWE</td>
+<td class="v">CWE-89</td>
+</tr>
+<tr>
+<td class="k">First Seen</td>
+<td class="v">Sep 14, 2026</td>
+<td class="k">Last Seen</td>
+<td class="v">Oct 27, 2026</td>
+</tr>
+<tr>
+<td class="k">Environment</td>
+<td class="v">Production</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Tool Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Tool</td>
+<td class="v break-content">ZAP</td>
+<td class="k">Tool Severity</td>
+<td class="v"><span class="dot" style="background-color:#1f9d55"></span>Low</td>
+</tr>
+<tr>
+<td class="k">Scan Type</td>
+<td class="v break-content">DAST</td>
+<td class="k">Rule</td>
+<td class="v break-content">zap-rule-741</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">CVSSv3 Vector</p>
+<p>N/A</p>
+</div>
+<div class="section flow">
+<p class="label">Summary</p>
+<div class="prose break-content">
+Missing Content-Security-Policy header on checkout.example.com
+</div>
+</div>
+<div class="section flow">
+<p class="label">Description</p>
+<div class="prose break-content">
+<p>Missing Content-Security-Policy header on checkout.example.com was found in <code>example-corp/payments-api</code>.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Steps To Reproduce</p>
+<div class="prose break-content">
+<ol><li>Sign in as a test customer.</li><li>Send the request below with the payload in the search field.</li></ol><pre><code>GET /api/v2/orders?q=%27%20OR%201%3D1-- HTTP/1.1
+Host: api.example.com</code></pre>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Mitigation</p>
+<div class="prose break-content">
+<p>Upgrade to the patched version and redeploy. Until then, block the pattern at the WAF.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Impact</p>
+<div class="prose break-content">
+<p>An unauthenticated attacker could read or change customer data.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Affected Components</p>
+<div class="prose break-content">
+<ul><li>example-corp/payments-api</li><li>example-corp/billing-service</li></ul>
+</div>
+</div>
+</div>
+<div id="2384756" class="card flow" style="">
+<p class="finding-title break-content"><a target="_blank" href="https://armorcode.example.com/#/findings/example-corp/1042/2384756">[2384756] Server banner discloses the nginx version</a></p>
+<div class="section">
+<p class="label">Ticket</p>
+<p>
+N/A
+</p>
+</div>
+<div class="section">
+<p class="label">General Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Severity</td>
+<td class="v">
+<span class="dot" style="background-color:#a1a7b2"></span>
+Info
+</td>
+<td class="k">Finding Category</td>
+<td class="v">Information Disclosure</td>
+</tr>
+<tr>
+<td class="k">Status</td>
+<td class="v">
+triage
+</td>
+<td class="k"></td><td class="v"></td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Vulnerability Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">CVE</td>
+<td class="v">N/A</td>
+<td class="k">CWE</td>
+<td class="v">CWE-89</td>
+</tr>
+<tr>
+<td class="k">First Seen</td>
+<td class="v">Sep 14, 2026</td>
+<td class="k">Last Seen</td>
+<td class="v">Oct 27, 2026</td>
+</tr>
+<tr>
+<td class="k">Environment</td>
+<td class="v">Production</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">Tool Information</p>
+<div class="well"><table class="pairs">
+<tr>
+<td class="k">Tool</td>
+<td class="v break-content">Tenable</td>
+<td class="k">Tool Severity</td>
+<td class="v"><span class="dot" style="background-color:#a1a7b2"></span>Info</td>
+</tr>
+<tr>
+<td class="k">Scan Type</td>
+<td class="v break-content">DAST</td>
+<td class="k">Rule</td>
+<td class="v break-content">tenable-rule-756</td>
+</tr>
+</table></div>
+</div>
+<div class="section">
+<p class="label">CVSSv3 Vector</p>
+<p>N/A</p>
+</div>
+<div class="section flow">
+<p class="label">Summary</p>
+<div class="prose break-content">
+Server banner discloses the nginx version
+</div>
+</div>
+<div class="section flow">
+<p class="label">Description</p>
+<div class="prose break-content">
+<p>Server banner discloses the nginx version was found in <code>example-corp/payments-api</code>.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Steps To Reproduce</p>
+<div class="prose break-content">
+<ol><li>Sign in as a test customer.</li><li>Send the request below with the payload in the search field.</li></ol><pre><code>GET /api/v2/orders?q=%27%20OR%201%3D1-- HTTP/1.1
+Host: api.example.com</code></pre>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Mitigation</p>
+<div class="prose break-content">
+<p>Upgrade to the patched version and redeploy. Until then, block the pattern at the WAF.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Impact</p>
+<div class="prose break-content">
+<p>An unauthenticated attacker could read or change customer data.</p>
+</div>
+</div>
+<div class="section flow">
+<p class="label">Affected Components</p>
+<div class="prose break-content">
+<ul><li>example-corp/payments-api</li><li>example-corp/billing-service</li></ul>
+</div>
+</div>
+</div>
+<div id="additional-document" class="card flow">
+<p class="label">Additional Documents</p>
+<ul class="docs">
+<li><img src="/sample-logo.svg" alt="architecture-diagram.svg"></li>
+</ul>
+<ul class="docs">
+<li><a href="https://armorcode.example.com/files/pentest-scope.pdf" target="_blank">pentest-scope.pdf</a></li>
+<li><a href="https://armorcode.example.com/files/data-flow.xlsx" target="_blank">data-flow.xlsx</a></li>
+</ul>
+</div>
+
+</body>
+</html>
