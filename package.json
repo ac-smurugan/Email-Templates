@@ -1,0 +1,13 @@
+{
+  "name": "armorcode-email-templates",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.10.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node src/build.ts && node src/readme.ts",
+    "preview": "node --watch-path=src src/preview/server.ts"
+  }
+}
