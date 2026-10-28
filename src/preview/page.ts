@@ -1,7 +1,10 @@
 import { DARK, LIGHT, RATING_COLORS } from '../tokens.ts';
 
-/** The preview page: a list of emails, and the picked one in a frame beside its plain text. */
-export const PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ArmorCode emails</title>
+/**
+ * The preview page: a list of emails, and the picked one in a frame beside its plain text. The
+ * static copy (for Cloudflare) has a file per scheme instead of a query string, and `.html` pages.
+ */
+export const page = (isStatic: boolean) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ArmorCode emails</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 :root{color-scheme:light dark;--bg:${LIGHT.canvas};--card:${LIGHT.card};--well:${LIGHT.well};--fg:${LIGHT.fg};--muted:${LIGHT.muted};--line:${LIGHT.line};--accent:${LIGHT.accent};--link:${LIGHT.link}}
@@ -34,6 +37,9 @@ h2.name{margin:0;font-size:20px}
 <main id="main"></main>
 <script>
 const WIDTHS={desktop:640,phone:375};
+const STATIC=${isStatic};
+const emailSrc=(id,scheme)=>STATIC?'/email/'+id+'-'+scheme+'.html':'/email/'+id+'?scheme='+scheme;
+const pdfSrc=id=>STATIC?'/pdf/'+id+'.html':'/pdf/'+id;
 let data, width=localStorage.width||'desktop', scheme=localStorage.scheme||'light';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function load(){data=await (await fetch('/emails.json')).json();nav();show();}
@@ -52,7 +58,7 @@ function show(){
   for(const a of document.querySelectorAll('nav a'))a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+id);
   const m=document.getElementById('main');
   if(id.startsWith('pdf:')){const p=data.pdfs.find(x=>'pdf:'+x.id===id);if(!p)return;
-    m.innerHTML='<h2 class="name">'+esc(p.name)+'</h2><dl class="meta"><dt>When</dt><dd>'+esc(p.when)+'</dd><dt>Source</dt><dd>'+esc(p.source)+'</dd></dl><div class="views"><iframe title="Report" src="/pdf/'+p.id+'" style="width:820px;height:1100px"></iframe></div>';
+    m.innerHTML='<h2 class="name">'+esc(p.name)+'</h2><dl class="meta"><dt>When</dt><dd>'+esc(p.when)+'</dd><dt>Source</dt><dd>'+esc(p.source)+'</dd></dl><div class="views"><iframe title="Report" src="'+pdfSrc(p.id)+'" style="width:820px;height:1100px"></iframe></div>';
     const f=m.querySelector('iframe');f.onload=()=>fit(f);return;}
   const e=data.emails.find(x=>x.id===id);if(!e)return;
   m.innerHTML='<h2 class="name">'+esc(e.name)+'</h2>'
@@ -62,10 +68,12 @@ function show(){
    +(e.newFields.length?'<dt>New</dt><dd class="new">'+e.newFields.map(f=>'<code>'+esc(f)+'</code>').join(' ')+'</dd>':'')+'</dl>'
    +(e.problems.length?'<div class="problems"><strong>Problems</strong><br>'+e.problems.map(esc).join('<br>')+'</div>':'')
    +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+'</div>'
-   +'<div class="views"><iframe title="Email" src="/email/'+e.id+'?scheme='+scheme+'" style="width:'+WIDTHS[width]+'px;height:700px"></iframe><pre>'+esc(e.text)+'</pre></div>';
+   +'<div class="views"><iframe title="Email" src="'+emailSrc(e.id,scheme)+'" style="width:'+WIDTHS[width]+'px;height:700px"></iframe><pre>'+esc(e.text)+'</pre></div>';
   const f=m.querySelector('iframe');f.onload=()=>fit(f);
   for(const b of m.querySelectorAll('[data-width]'))b.onclick=()=>{width=localStorage.width=b.dataset.width;show()};
   for(const b of m.querySelectorAll('[data-scheme]'))b.onclick=()=>{scheme=localStorage.scheme=b.dataset.scheme;show()};
 }
 addEventListener('hashchange',show);load();
 </script></body></html>`;
+
+export const PAGE = page(false);

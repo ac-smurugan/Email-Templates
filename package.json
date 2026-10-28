@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "node src/build.ts && node src/readme.ts",
-    "preview": "node --watch-path=src src/preview/server.ts"
+    "preview": "node --watch-path=src src/preview/server.ts",
+    "build:site": "node src/static.ts"
   }
 }
