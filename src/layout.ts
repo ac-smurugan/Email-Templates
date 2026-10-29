@@ -1,4 +1,5 @@
 import { Html, markup, safeUrl, type Piece } from './escape.ts';
+import { badgeFile } from './icons.ts';
 import { Cond, ELSE, Vtl, IF_CLOSE, LIST_CLOSE, elseIf, ifOpen, is, listOpen, plain, v, type Loop } from './placeholders.ts';
 import {
   DARK,
@@ -97,6 +98,8 @@ export interface Email {
   /** What happened, in a word or two, beside a status dot. */
   eyebrow: string;
   tone: Tone;
+  /** The badge icon beside the eyebrow: set from `ICON_BY_ID` by `defineTemplate`. Without one, a dot. */
+  icon?: string;
   title: Rich;
   subtitle?: Rich;
   blocks: readonly Block[];
@@ -126,8 +129,12 @@ export const DEFAULT_LOGO_URL = 'https://app.armorcode.com/images/product-logos/
 /** The placeholders the brand row and the footer use, in the email's template language. */
 function basePlaceholders(email: Email) {
   return email.engine === 'substitution'
-    ? { logoUrl: plain('amcLogoUrl', DEFAULT_LOGO_URL), notificationSettingsUrl: plain('notificationSettingsUrl') }
-    : { logoUrl: v('amcLogoUrl'), notificationSettingsUrl: v('notificationSettingsUrl') };
+    ? {
+        logoUrl: plain('amcLogoUrl', DEFAULT_LOGO_URL),
+        iconBaseUrl: plain('iconBaseUrl'),
+        notificationSettingsUrl: plain('notificationSettingsUrl'),
+      }
+    : { logoUrl: v('amcLogoUrl'), iconBaseUrl: v('iconBaseUrl'), notificationSettingsUrl: v('notificationSettingsUrl') };
 }
 
 export const COMPANY = 'ArmorCode';
@@ -316,7 +323,9 @@ export function toHtml(email: Email): string {
   const base = basePlaceholders(email);
   const button = markup`<table ${T}><tr><td class="zb" bgcolor="${LIGHT.accent}" style="border-radius:${RADIUS.button}px;mso-padding-alt:10px 18px"><a class="zb" href="${hrefHtml(email.action.url)}" style="display:inline-block;padding:10px 18px;border-radius:${RADIUS.button}px;background:${LIGHT.accent};color:#ffffff;font-size:14px;line-height:20px;font-weight:600">${inlineHtml(email.action.label)}</a></td></tr></table>`;
   const content = [
-    markup`<tr><td class="zm" style="${SMALL}">${dot(TONES[email.tone])}&nbsp; ${email.eyebrow}</td></tr>`,
+    email.icon
+      ? markup`<tr><td><table ${T}><tr><td style="padding-right:8px"><img src="${base.iconBaseUrl}/${badgeFile(email.icon, email.tone)}" width="20" height="20" alt="" style="display:block;border-radius:10px"></td><td class="zm" style="${SMALL}">${email.eyebrow}</td></tr></table></td></tr>`
+      : markup`<tr><td class="zm" style="${SMALL}">${dot(TONES[email.tone])}&nbsp; ${email.eyebrow}</td></tr>`,
     row(
       6,
       markup`<h1 class="zf" style="margin:0;${type('title')};font-weight:600;color:${LIGHT.fg}">${inlineHtml(email.title)}</h1>${email.subtitle ? markup`<p class="zm" style="margin:2px 0 0;${SMALL}">${inlineHtml(email.subtitle)}</p>` : ''}`,

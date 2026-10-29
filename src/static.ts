@@ -3,7 +3,7 @@
  * `wrangler.jsonc`). It's the same page as `pnpm preview`, with a file per email and scheme instead
  * of a server. Only the sample values are in it; the templates' placeholders are filled here.
  */
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { LOGO, emailHtml, list, pdfHtml } from './preview/data.ts';
 import { page } from './preview/page.ts';
@@ -15,6 +15,10 @@ const SITE = fileURLToPath(new URL('../site/', import.meta.url));
 rmSync(SITE, { recursive: true, force: true });
 mkdirSync(`${SITE}email`, { recursive: true });
 mkdirSync(`${SITE}pdf`, { recursive: true });
+cpSync(fileURLToPath(new URL('../assets/icons/', import.meta.url)), `${SITE}icons`, {
+  recursive: true,
+  filter: (source) => !source.includes('glyphs'),
+});
 
 const data = list();
 const broken = data.emails.filter((e) => e.problems.length);

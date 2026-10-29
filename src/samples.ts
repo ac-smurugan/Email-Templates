@@ -6,5 +6,6 @@ export const SAMPLE_APP_URL = 'https://armorcode.example.com';
 
 export const SAMPLE_BASE = {
   amcLogoUrl: '/sample-logo.svg',
+  iconBaseUrl: '/icons',
   notificationSettingsUrl: `${SAMPLE_APP_URL}/settings/notifications`,
 };

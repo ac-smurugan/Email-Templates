@@ -1,3 +1,4 @@
+import { ICON_BY_ID } from './icons.ts';
 import { richText, toHtml, toText, type Email } from './layout.ts';
 
 /** The placeholders every email uses besides its own, for the brand row. */
@@ -5,6 +6,11 @@ export const BASE_FIELDS = {
   amcLogoUrl: {
     about:
       'The ArmorCode mark (the circles, without the white wordmark, which vanishes on light backgrounds): host assets/armorcode-mark@2x.png, shown 28px high',
+  },
+  iconBaseUrl: {
+    about:
+      'Where the eyebrow badge images are hosted, with no trailing slash: host the PNGs in assets/icons/ there, shown 20px high',
+    isNew: true,
   },
 } as const satisfies Fields;
 
@@ -73,7 +79,9 @@ export function defineTemplate(spec: {
   sample: Sample;
   build(): Email;
 }): EmailTemplate {
-  const email = spec.build();
+  const icon = ICON_BY_ID[spec.id];
+  if (!icon) throw new Error(`${spec.id} has no icon: add it to ICON_BY_ID in src/icons.ts`);
+  const email = { ...spec.build(), icon };
   const shared = email.footer === 'operational' ? { ...BASE_FIELDS, ...SETTINGS_FIELD } : BASE_FIELDS;
   return {
     id: spec.id,
