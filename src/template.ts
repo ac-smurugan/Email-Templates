@@ -65,6 +65,11 @@ export interface EmailTemplate {
   preview: string;
   html: string;
   text: string;
+  /**
+   * Other layouts of the same email, for comparing in the preview: this email's own is the first,
+   * `default`. Empty when there's only one.
+   */
+  variants: { id: string; label: string; html: string; text: string }[];
 }
 
 export function defineTemplate(spec: {
@@ -78,6 +83,8 @@ export function defineTemplate(spec: {
   fields: Fields;
   sample: Sample;
   build(): Email;
+  /** Other layouts to compare in the preview: what the main one is called, and the others. */
+  variants?: { defaultLabel: string; others: readonly { id: string; label: string; build(): Email }[] };
 }): EmailTemplate {
   const icon = ICON_BY_ID[spec.id];
   if (!icon) throw new Error(`${spec.id} has no icon: add it to ICON_BY_ID in src/icons.ts`);
@@ -99,5 +106,14 @@ export function defineTemplate(spec: {
     preview: richText(email.preview),
     html: toHtml(email),
     text: toText(email),
+    variants: spec.variants
+      ? [
+          { id: 'default', label: spec.variants.defaultLabel, html: toHtml(email), text: toText(email) },
+          ...spec.variants.others.map((other) => {
+            const alt = { ...other.build(), icon };
+            return { id: other.id, label: other.label, html: toHtml(alt), text: toText(alt) };
+          }),
+        ]
+      : [],
   };
 }

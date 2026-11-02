@@ -32,9 +32,9 @@ h2.name{margin:0;font-size:20px}
 <script>
 const WIDTHS={desktop:640,phone:375};
 const STATIC=true;
-const emailSrc=(id,scheme)=>STATIC?'/email/'+id+'-'+scheme+'.html':'/email/'+id+'?scheme='+scheme;
+const emailSrc=(id,scheme,variant)=>{const v=variant&&variant!=='default'?variant:'';return STATIC?'/email/'+id+'-'+scheme+(v?'-'+v:'')+'.html':'/email/'+id+'?scheme='+scheme+(v?'&variant='+v:'');};
 const pdfSrc=id=>STATIC?'/pdf/'+id+'.html':'/pdf/'+id;
-let data, width=localStorage.width||'desktop', scheme=localStorage.scheme||'light';
+let data, width=localStorage.width||'desktop', scheme=localStorage.scheme||'light', variant=localStorage.variant||'default';
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function load(){data=await (await fetch('/emails.json')).json();nav();show();}
 function nav(){
@@ -55,17 +55,21 @@ function show(){
     m.innerHTML='<h2 class="name">'+esc(p.name)+'</h2><dl class="meta"><dt>When</dt><dd>'+esc(p.when)+'</dd><dt>Source</dt><dd>'+esc(p.source)+'</dd></dl><div class="views"><iframe title="Report" src="'+pdfSrc(p.id)+'" style="width:820px;height:1100px"></iframe></div>';
     const f=m.querySelector('iframe');f.onload=()=>fit(f);return;}
   const e=data.emails.find(x=>x.id===id);if(!e)return;
+  // The layout last picked, if this email has it; otherwise its own.
+  const shownVariant=e.variants.some(v=>v.id===variant)?variant:'default';
+  const text=(e.variants.find(v=>v.id===shownVariant)||{text:e.text}).text;
   m.innerHTML='<h2 class="name">'+esc(e.name)+'</h2>'
    +'<dl class="meta"><dt>Subject</dt><dd><strong>'+esc(e.subject)+'</strong> <span style="color:var(--muted)">· '+e.subject.length+' characters</span></dd>'
    +'<dt>Who</dt><dd>'+esc(e.who)+'</dd><dt>When</dt><dd>'+esc(e.when)+'</dd><dt>Source</dt><dd>'+esc(e.source)+'</dd>'
    +'<dt>Type</dt><dd><span class="tag">'+e.kind+'</span><span class="tag">'+(e.engine==='velocity'?'Velocity':'Plain substitution')+'</span></dd>'
    +(e.newFields.length?'<dt>New</dt><dd class="new">'+e.newFields.map(f=>'<code>'+esc(f)+'</code>').join(' ')+'</dd>':'')+'</dl>'
    +(e.problems.length?'<div class="problems"><strong>Problems</strong><br>'+e.problems.map(esc).join('<br>')+'</div>':'')
-   +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+'</div>'
-   +'<div class="views"><iframe title="Email" src="'+emailSrc(e.id,scheme)+'" style="width:'+WIDTHS[width]+'px;height:700px"></iframe><pre>'+esc(e.text)+'</pre></div>';
+   +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+(e.variants.length?seg('variant',e.variants.map(v=>[v.id,v.label]),shownVariant):'')+'</div>'
+   +'<div class="views"><iframe title="Email" src="'+emailSrc(e.id,scheme,shownVariant)+'" style="width:'+WIDTHS[width]+'px;height:700px"></iframe><pre>'+esc(text)+'</pre></div>';
   const f=m.querySelector('iframe');f.onload=()=>fit(f);
   for(const b of m.querySelectorAll('[data-width]'))b.onclick=()=>{width=localStorage.width=b.dataset.width;show()};
   for(const b of m.querySelectorAll('[data-scheme]'))b.onclick=()=>{scheme=localStorage.scheme=b.dataset.scheme;show()};
+  for(const b of m.querySelectorAll('[data-variant]'))b.onclick=()=>{variant=localStorage.variant=b.dataset.variant;show()};
 }
 addEventListener('hashchange',show);load();
 </script></body></html>

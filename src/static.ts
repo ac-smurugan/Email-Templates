@@ -29,7 +29,11 @@ writeFileSync(`${SITE}index.html`, page(true));
 writeFileSync(`${SITE}emails.json`, JSON.stringify(data));
 writeFileSync(`${SITE}sample-logo.svg`, LOGO);
 for (const t of TEMPLATES)
-  for (const scheme of ['light', 'dark'] as const) writeFileSync(`${SITE}email/${t.id}-${scheme}.html`, emailHtml(t, scheme));
+  for (const scheme of ['light', 'dark'] as const) {
+    writeFileSync(`${SITE}email/${t.id}-${scheme}.html`, emailHtml(t, scheme));
+    for (const v of t.variants.filter((x) => x.id !== 'default'))
+      writeFileSync(`${SITE}email/${t.id}-${scheme}-${v.id}.html`, emailHtml(t, scheme, v.id));
+  }
 for (const p of PDFS) writeFileSync(`${SITE}pdf/${p.id}.html`, pdfHtml(p));
 
 console.log(`Wrote site/: ${TEMPLATES.length} emails (light and dark) and ${PDFS.length} PDF reports.`);

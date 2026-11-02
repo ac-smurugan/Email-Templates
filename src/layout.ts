@@ -1,6 +1,6 @@
 import { Html, markup, safeUrl, type Piece } from './escape.ts';
 import { badgeFile } from './icons.ts';
-import { Cond, ELSE, HAS_NEXT, Vtl, IF_CLOSE, LIST_CLOSE, elseIf, ifOpen, is, listOpen, plain, v, type Loop } from './placeholders.ts';
+import { Cond, ELSE, HAS_NEXT, Vtl, IF_CLOSE, LIST_CLOSE, elseIf, ifOpen, is, listOpen, plain, rowEnd, tidy, v, type Loop } from './placeholders.ts';
 import {
   DARK,
   FONT,
@@ -33,6 +33,10 @@ export type Inline =
   | { ratingOf: string }
   /** The first branch whose condition holds; `else` (or nothing) when none does. */
   | { choose: readonly (readonly [Cond, Rich])[]; else?: Rich }
+  /** A link inside text. */
+  | { link: Rich; url: Href }
+  /** A placeholder's value, tidied: `328.0` shows as `328`, and a rating name is colored. */
+  | { tidy: string }
   /** `item` for each entry of a list, on one line, with `separator` between them. */
   | { each: Loop; item: Rich; separator?: string };
 export type Rich = Inline | readonly Inline[];
@@ -59,6 +63,19 @@ export type Block = (
       items: readonly { label: string; value: Rich; rating?: Rating; change?: Rich; trend?: 'better' | 'worse' | 'same'; when?: Cond }[];
     }
   /**
+   * Records, each its own well: a linked title (with a rating dot), a line under it, and the record's
+   * facts as a grid of small labels over values, `columns` to a row (two on a phone).
+   */
+  | ({
+      kind: 'records';
+      columns: number;
+    } & Each<{
+      title: Rich;
+      url: Href;
+      meta?: Rich;
+      facts: { each: Loop; label: Rich; value: Rich };
+    }>)
+  /**
    * A picture, like a dashboard snapshot: full width in a well, linking to `url` when there is one.
    * `src` can be a URL or a `cid:` reference to an inline attachment.
    */
@@ -69,7 +86,7 @@ export type Block = (
   | ({
       kind: 'table';
       title?: string;
-      columns: readonly { label: string; align?: 'left' | 'right' }[];
+      columns: readonly { label: string; align?: 'left' | 'right'; nowrap?: boolean; hideOnPhone?: boolean }[];
       more?: Rich;
     } & Each<{ rating?: Rating; ratingOf?: string; cells: readonly Rich[] }>)
 ) & {
@@ -177,6 +194,16 @@ function ratingColorOf(name: string): Piece {
   ];
 }
 
+/** A rating name's color as text: darker on light, so amber and green stay readable; the bright one on dark. */
+const ratingInk = (rating: Rating) => {
+  const channels = [1, 3, 5].map((i) => Math.round(parseInt(RATING_COLORS[rating].slice(i, i + 2), 16) * 0.6));
+  return `#${channels.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+};
+const RATING_TAGS = RATING_VALUES.map(([value, rating]) => ({
+  value,
+  open: `<span class="zv-${rating}" style="font-weight:600;color:${ratingInk(rating)}">`,
+}));
+
 const dot = (color: Piece) => markup`<span style="color:${color}">&#9679;</span>`;
 
 function chooseVtl<T>(inline: Extract<Inline, { choose: unknown }>, render: (rich: Rich) => T): (T | Vtl)[] {
@@ -206,6 +233,9 @@ function inlineHtml(rich: Rich): Html {
       return markup`<code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px">${inlineHtml(part.code)}</code>`;
     if ('rating' in part) return dot(RATING_COLORS[part.rating]);
     if ('ratingOf' in part) return dot(ratingColorOf(part.ratingOf));
+    if ('link' in part)
+      return markup`<a class="za" href="${hrefHtml(part.url)}" style="font-weight:600;color:${LIGHT.link}">${inlineHtml(part.link)}</a>`;
+    if ('tidy' in part) return tidy(part.tidy, RATING_TAGS);
     if ('each' in part) return eachVtl(part, inlineHtml);
     return chooseVtl(part, inlineHtml);
   })}`;
@@ -222,6 +252,8 @@ export function richText(rich: Rich): string {
       if ('strong' in part) return richText(part.strong);
       if ('code' in part) return richText(part.code);
       if ('rating' in part || 'ratingOf' in part) return '';
+      if ('link' in part) return `${richText(part.link)} (${hrefText(part.url)})`;
+      if ('tidy' in part) return tidy(part.tidy).text;
       if ('each' in part) return eachVtl(part, richText).map(String).join('');
       return chooseVtl(part, richText).join('');
     })
@@ -236,9 +268,10 @@ body,table,td,th,p,a,h1{font-family:${FONT}}
 table{border-collapse:collapse}
 img{border:0;outline:none;text-decoration:none}
 a{text-decoration:none}
+.zn{white-space:nowrap}
 td,p,h1{overflow-wrap:break-word;word-wrap:break-word}
-@media (max-width:${WIDTH.phone}px){.zo{padding:${SPACE.canvasPhone}!important}.zp{padding:${SPACE.cardPhone}!important}.zs td{display:block!important;width:auto!important;padding:0 0 14px!important}.zs td:last-child{padding-bottom:0!important}}
-${DARK_QUERY}{.zc{background:${DARK.canvas}!important}.zk{background:${DARK.card}!important}.zw{background:${DARK.well}!important}.zf{color:${DARK.fg}!important}.zm{color:${DARK.muted}!important}.za{color:${DARK.link}!important}.zb{background:${DARK.accent}!important}.zt td,.zt th{border-color:${DARK.line}!important}.zg{color:${DARK.better}!important}.zr{color:${DARK.worse}!important}}`;
+@media (max-width:${WIDTH.phone}px){.zo{padding:${SPACE.canvasPhone}!important}.zp{padding:${SPACE.cardPhone}!important}.zs td{display:block!important;width:auto!important;padding:0 0 14px!important}.zs td:last-child{padding-bottom:0!important}.zq td{display:inline-block!important;width:50%!important;box-sizing:border-box}.zh{display:none!important}}
+${DARK_QUERY}{.zc{background:${DARK.canvas}!important}.zk{background:${DARK.card}!important}.zw{background:${DARK.well}!important}.zf{color:${DARK.fg}!important}.zm{color:${DARK.muted}!important}.za{color:${DARK.link}!important}.zb{background:${DARK.accent}!important}.zt td,.zt th{border-color:${DARK.line}!important}.zg{color:${DARK.better}!important}.zr{color:${DARK.worse}!important}${RATINGS.map((r) => `.zv-${r}{color:${RATING_COLORS[r]}!important}`).join('')}}`;
 
 const MSO = `<!--[if mso]><style>body,table,td,th,p,a,h1{font-family:${MSO_FONT}!important}</style><![endif]-->`;
 
@@ -303,6 +336,13 @@ function blockHtml(block: Block): Html {
         })}</tr></table>`,
       );
     }
+    case 'records': {
+      const record = (item: Extract<Block, { kind: 'records' }> extends infer R ? (R extends { item: infer I } ? I : never) : never) =>
+        well(
+          markup`<a class="za" href="${hrefHtml(item.url)}" style="font-size:15px;line-height:22px;font-weight:600;color:${LIGHT.link}">${inlineHtml(item.title)}</a>${item.meta ? markup`<p class="zm" style="${QUIET}">${inlineHtml(item.meta)}</p>` : ''}<table ${T} width="100%" class="zq" style="margin-top:10px"><tr>${listOpen(item.facts.each)}<td valign="top" width="${Math.floor(100 / block.columns)}%" style="padding:0 8px 10px 0"><p class="zm" style="margin:0;font-size:12px;line-height:16px;color:${LIGHT.muted}">${inlineHtml(item.facts.label)}</p><p class="zf" style="margin:0;font-size:13px;line-height:19px;color:${LIGHT.fg}">${inlineHtml(item.facts.value)}</p></td>${ifOpen(rowEnd(block.columns))}</tr><tr>${IF_CLOSE}${LIST_CLOSE}</tr></table>`,
+        );
+      return markup`<table ${T} width="100%">${eachHtml(block, (item) => markup`<tr><td style="padding-top:10px">${record(item)}</td></tr>`)}</table>`;
+    }
     case 'image': {
       const img = markup`<img src="${srcHtml(block.src)}" alt="${block.alt as Piece}" width="${block.width}"${block.height ? markup` height="${block.height}"` : ''} style="display:block;width:100%;max-width:${block.width}px;height:auto;border:0;border-radius:6px">`;
       return markup`<table ${T} width="100%" class="zw" style="background:${LIGHT.well};border-radius:${RADIUS.well}px"><tr><td style="padding:8px">${block.url ? markup`<a href="${hrefHtml(block.url)}" style="display:block">${img}</a>` : img}</td></tr></table>`;
@@ -326,13 +366,13 @@ function blockHtml(block: Block): Html {
         `padding:9px 12px 9px 0;border-bottom:1px solid ${LIGHT.line}${align === 'right' ? ';text-align:right' : ''}`;
       return markup`${block.title ? label(block.title, 6) : ''}<table ${T} width="100%" class="zf zt" style="font-size:13px;line-height:19px;color:${LIGHT.fg}"><tr>${block.columns.map(
         (column) =>
-          markup`<th align="${column.align ?? 'left'}" class="zm" style="${cell(column.align)};font-size:12px;font-weight:500;color:${LIGHT.muted}">${column.label}</th>`,
+          markup`<th align="${column.align ?? 'left'}" class="zm${column.nowrap ? ' zn' : ''}${column.hideOnPhone ? ' zh' : ''}" style="${cell(column.align)};font-size:12px;font-weight:500;color:${LIGHT.muted}">${column.label}</th>`,
       )}</tr>${eachHtml(
         block,
         (row) =>
           markup`<tr>${row.cells.map(
             (value, i) =>
-              markup`<td style="${cell(block.columns[i]?.align)}">${i === 0 && row.rating ? markup`${dot(RATING_COLORS[row.rating])}&nbsp; ` : ''}${i === 0 && row.ratingOf ? markup`${dot(ratingColorOf(row.ratingOf))}&nbsp; ` : ''}${inlineHtml(value)}</td>`,
+              markup`<td${new Html(`${block.columns[i]?.nowrap || block.columns[i]?.hideOnPhone ? ` class="${[block.columns[i]?.nowrap && 'zn', block.columns[i]?.hideOnPhone && 'zh'].filter(Boolean).join(' ')}"` : ''}`)} style="${cell(block.columns[i]?.align)}">${i === 0 && row.rating ? markup`${dot(RATING_COLORS[row.rating])}&nbsp; ` : ''}${i === 0 && row.ratingOf ? markup`${dot(ratingColorOf(row.ratingOf))}&nbsp; ` : ''}${inlineHtml(value)}</td>`,
           )}</tr>`,
       )}</table>${block.more ? markup`<p class="zm" style="margin:10px 0 0;${SMALL}">${inlineHtml(block.more)}</p>` : ''}`;
     }
@@ -414,6 +454,12 @@ function blockText(block: Block): string {
       return block.items
         .map((stat) => `${stat.label}: ${richText(stat.value)}${stat.change ? guardText(stat.when, ` (${richText(stat.change)})`).replace(/\n/g, '') : ''}\n`)
         .join('');
+    case 'records':
+      return eachText(
+        block,
+        (item) =>
+          `${richText(item.title)}\n${item.meta ? lineText(item.meta) : ''}${eachText({ each: item.facts.each, item: item.facts }, (fact) => `  ${richText(fact.label)}: ${richText(fact.value)}\n`)}${hrefText(item.url)}\n\n`,
+      );
     case 'image':
       return `[${hrefText(block.alt)}]${block.url ? ` ${hrefText(block.url)}` : ''}\n`;
     case 'risk':

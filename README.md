@@ -66,6 +66,8 @@ Rules:
 - **Outlook.** Table layout, Arial instead of the system font stack, and a fixed 600px wrapper in MSO conditionals.
 - **Icons.** The eyebrow starts with a 20px round badge: a glyph from ArmorCode Zero's icon set in a dark shade of the email's tone color, on a light tint of it (an opaque image, so it looks the same on a light or a dark card, and the glyph keeps at least 6:1 contrast) (the Central Icon System). The glyph says what the email is about, and the color says how it went. Every failure uses `exclamation`, so a failure doesn't rely on color alone. Each email's icon is listed in `src/icons.ts`.
 - **Images.** The `image` block shows a picture, like a dashboard snapshot, full width in a well (520px, so a 1040px image is sharpest), linking where the template says. Its source is a placeholder: a hosted URL or a `cid:` inline attachment.
+- **Layouts to compare.** An email can define other layouts of itself (`variants` in `defineTemplate`). The preview shows a switch for it next to Desktop/Phone and Light/Dark; the built email is always the first, default layout. Right now the two saved findings view reports compare Rows (cards) with Table.
+- **Tidied values.** `{ tidy: 'cell.value' }` shows a whole number sent as `328.0` as `328`, and colors a rating name (Critical, High, Medium, Low). Other values are shown as they are.
 - **Plain text** is rendered from the same content as the HTML.
 
 | Token | Light | Dark |
@@ -615,7 +617,7 @@ The build fails when an email:
 | `viewUrl` | Today | Required | The view in ArmorCode (today’s “clicking this link” link) |
 | `customEmailSubject` | Today | Optional | The subject the tenant configured for these reports; the default subject when empty |
 | `customMessage` | Today | Optional | The message configured for the report, when there is one. Rendered from markdown today: give it as already-rendered HTML |
-| `findings` | **New** | Required | Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low, for the dot; optional) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value` |
+| `findings` | **New** | Required | Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low: the Table layout shows it, colored) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value`. The Table layout, to compare, also reads `riskScore` and `dueDate` (today’s Risk Score and Resolution Due Date columns) |
 
 #### Saved findings view report (download link) (`saved-view-report-link`)
 
@@ -638,7 +640,7 @@ The build fails when an email:
 | `viewUrl` | Today | Required | The view in ArmorCode (today’s “clicking this link” link) |
 | `customEmailSubject` | Today | Optional | The subject the tenant configured for these reports; the default subject when empty |
 | `customMessage` | Today | Optional | The message configured for the report, when there is one. Rendered from markdown today: give it as already-rendered HTML |
-| `findings` | **New** | Required | Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low, for the dot; optional) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value` |
+| `findings` | **New** | Required | Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low: the Table layout shows it, colored) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value`. The Table layout, to compare, also reads `riskScore` and `dueDate` (today’s Risk Score and Resolution Due Date columns) |
 | `downloadUrl` | Today | Required | The full CSV to download; the link expires (today’s “download the file using this link” link) |
 | `expirationTimeInHours` | Today | Required | How many hours the download link works, as a number |
 

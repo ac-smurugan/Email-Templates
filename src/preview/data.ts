@@ -37,6 +37,8 @@ export function list() {
     when: t.when,
     subject: fill(t.subject, t.sample).output,
     text: fill(t.text, t.sample).output,
+    // Other layouts, to compare: their ids, labels and plain text.
+    variants: t.variants.map((v) => ({ id: v.id, label: v.label, text: fill(v.text, t.sample).output })),
     problems: problems(t),
     newFields: Object.entries(t.fields)
       .filter(([, f]) => f.isNew)
@@ -52,8 +54,9 @@ export const findPdf = (id: string) => PDFS.find((p) => p.id === id);
 /** Links open outside the frame. */
 const outside = (html: string) => html.replace('<head>', '<head><base target="_blank">');
 
-export function emailHtml(t: EmailTemplate, scheme: 'light' | 'dark'): string {
-  return outside(pinScheme(fill(t.html, t.sample).output, scheme));
+export function emailHtml(t: EmailTemplate, scheme: 'light' | 'dark', variant = 'default'): string {
+  const html = t.variants.find((v) => v.id === variant)?.html ?? t.html;
+  return outside(pinScheme(fill(html, t.sample).output, scheme));
 }
 
 export function pdfHtml(p: NonNullable<ReturnType<typeof findPdf>>): string {

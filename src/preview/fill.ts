@@ -368,6 +368,8 @@ const num = (value: unknown): number => {
   return n;
 };
 
+const str = (value: unknown): string => (typeof value === 'string' ? value : String(value ?? ''));
+
 function call(target: unknown, name: string, args: unknown[]): unknown {
   if (target == null) return null;
   const arity = (...counts: number[]) => {
@@ -380,6 +382,11 @@ function call(target: unknown, name: string, args: unknown[]): unknown {
         return arity(0), s.length;
       case 'substring':
         return arity(1, 2), s.substring(num(args[0]), args[1] === undefined ? undefined : num(args[1]));
+      case 'matches':
+        // Java's matches() needs the whole string to match.
+        return arity(1), new RegExp(`^(?:${str(args[0])})$`).test(s);
+      case 'replaceAll':
+        return arity(2), s.replace(new RegExp(str(args[0]), 'g'), str(args[1]));
       case 'toUpperCase':
         return arity(0), s.toUpperCase();
       case 'toLowerCase':

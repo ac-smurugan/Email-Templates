@@ -1,7 +1,7 @@
 import { flag, loop, not, present, v } from '../../placeholders.ts';
 import { SAMPLE_APP_URL, SAMPLE_BASE } from '../../samples.ts';
 import { defineTemplate, type Fields } from '../../template.ts';
-import { when, type Block, type Rich } from '../../layout.ts';
+import { when, type Block, type Email, type Rich } from '../../layout.ts';
 
 // Saved findings views, saved ticket searches and shared search results.
 
@@ -18,7 +18,7 @@ const viewFields = {
   },
   findings: {
     about:
-      'Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low, for the dot; optional) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value`',
+      'Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low: the Table layout shows it, colored) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value`. The Table layout, to compare, also reads `riskScore` and `dueDate` (today’s Risk Score and Resolution Due Date columns)',
     isNew: true,
   },
 } satisfies Fields;
@@ -44,6 +44,8 @@ const viewSample = {
   findings: [
     {
       id: '88213409',
+      riskScore: '328.0',
+      dueDate: '2026/10/18',
       url: `${SAMPLE_APP_URL}/findings/88213409`,
       summary: 'payments-api: SQL injection in the order lookup endpoint',
       severity: 'Critical',
@@ -51,6 +53,8 @@ const viewSample = {
     },
     {
       id: '88213377',
+      riskScore: '272.0',
+      dueDate: '2026/10/25',
       url: `${SAMPLE_APP_URL}/findings/88213377`,
       summary: 'payments-api: Hard-coded AWS secret key in the deploy script',
       severity: 'High',
@@ -58,6 +62,8 @@ const viewSample = {
     },
     {
       id: '88201954',
+      riskScore: '136.0',
+      dueDate: '2026/11/08',
       url: `${SAMPLE_APP_URL}/findings/88201954`,
       summary: 'checkout-web: Prototype pollution via crafted query parameters',
       severity: 'Medium',
@@ -65,6 +71,8 @@ const viewSample = {
     },
     {
       id: '88201920',
+      riskScore: '128.0',
+      dueDate: '2026/11/08',
       url: `${SAMPLE_APP_URL}/findings/88201920`,
       summary: 'checkout-web: Denial of service via an unbounded regular expression',
       severity: 'Medium',
@@ -80,26 +88,70 @@ const viewSubject: Rich = [
 const message: Block = { kind: 'quote', label: 'Message', text: v('customMessage'), when: present('customMessage') };
 
 // Today's top-10 table has a column for each column the view shows, which is too wide for an email
-// on a phone. Each finding is a row instead: its summary as the link, and its other columns under it.
+// on a phone. Each finding is a card instead: its summary as the link, and its other columns as a
+// grid of labels over values.
 const topFindingsLabel: Block = { kind: 'text', text: { strong: 'Top 10 findings matching the view' } };
 
 const topFindings: Block = {
-  kind: 'items',
+  kind: 'records',
+  columns: 4,
   each: loop('findings', 'finding'),
   item: {
-    title: [when(present('finding.severity'), [{ ratingOf: 'finding.severity' }, ' ']), v('finding.summary')],
+    title: [v('finding.id'), ': ', v('finding.summary')],
     url: v('finding.url'),
-    meta: [
-      'ID ',
-      v('finding.id'),
-      ' · ',
-      { each: loop('finding.cells', 'cell'), item: [v('cell.label'), ': ', v('cell.value')], separator: ' · ' },
+    facts: { each: loop('finding.cells', 'cell'), label: v('cell.label'), value: { tidy: 'cell.value' } },
+  },
+};
+
+// The same findings as a table, to compare with the cards: five fixed columns, from fields every
+// finding has. On a phone the last two are hidden. The full set of columns stays in the CSV and the cards.
+const topFindingsTable: Block = {
+  kind: 'table',
+  columns: [
+    { label: 'ID', nowrap: true },
+    { label: 'Summary' },
+    { label: 'Severity', nowrap: true },
+    { label: 'Risk score', align: 'right', nowrap: true, hideOnPhone: true },
+    { label: 'Due', nowrap: true, hideOnPhone: true },
+  ],
+  each: loop('findings', 'finding'),
+  item: {
+    cells: [
+      { link: v('finding.id'), url: v('finding.url') },
+      v('finding.summary'),
+      { tidy: 'finding.severity' },
+      { tidy: 'finding.riskScore' },
+      { tidy: 'finding.dueDate' },
     ],
   },
 };
 
 const viewWho = 'The people the view is shared with, or the scheduled report’s recipients';
 const viewReason = 'You got this email because a saved findings view in ArmorCode was shared with you or sends its report to you.';
+
+const cardsAndTable = { defaultLabel: 'Rows (cards)' };
+const variantsOf = (email: (findings: Block) => Email) => ({
+  ...cardsAndTable,
+  others: [{ id: 'table', label: 'Table', build: () => email(topFindingsTable) }],
+});
+
+const attachedEmail = (findings: Block): Email => ({
+  subject: viewSubject,
+  preview: ['The CSV of findings from ', v('savedSearchName'), ' is attached.'],
+  eyebrow: 'Findings report',
+  tone: 'accent',
+  title: v('savedSearchName'),
+  subtitle: 'Saved findings view report',
+  blocks: [
+    message,
+    { kind: 'text', text: 'The attached CSV has the full list of findings, with all their details.' },
+    topFindingsLabel,
+    findings,
+  ],
+  action: { label: 'Open the view', url: v('viewUrl') },
+  reason: viewReason,
+  footer: 'operational',
+});
 
 /** A saved findings view's report, small enough to attach. */
 export const savedViewReport = defineTemplate({
@@ -111,23 +163,34 @@ export const savedViewReport = defineTemplate({
   when: 'A saved findings view is shared or its schedule runs, and the results are small enough to attach as a CSV',
   fields: viewFields,
   sample: viewSample,
-  build: () => ({
-    subject: viewSubject,
-    preview: ['The CSV of findings from ', v('savedSearchName'), ' is attached.'],
-    eyebrow: 'Findings report',
-    tone: 'accent',
-    title: v('savedSearchName'),
-    subtitle: 'Saved findings view report',
-    blocks: [
-      message,
-      { kind: 'text', text: 'The attached CSV has the full list of findings, with all their details.' },
-      topFindingsLabel,
-      topFindings,
-    ],
-    action: { label: 'Open the view', url: v('viewUrl') },
-    reason: viewReason,
-    footer: 'operational',
-  }),
+  build: () => attachedEmail(topFindings),
+  variants: variantsOf(attachedEmail),
+});
+
+const linkEmail = (findings: Block): Email => ({
+  subject: viewSubject,
+  preview: ['The CSV of findings from ', v('savedSearchName'), ' is ready to download.'],
+  eyebrow: 'Findings report',
+  tone: 'accent',
+  title: v('savedSearchName'),
+  subtitle: 'Saved findings view report',
+  blocks: [
+    message,
+    {
+      kind: 'text',
+      text: [
+        'The full list of findings is too large to attach. Download the CSV instead: the link expires in ',
+        { strong: [v('expirationTimeInHours'), ' hours'] },
+        '.',
+      ],
+    },
+    topFindingsLabel,
+    findings,
+  ],
+  action: { label: 'Download the CSV', url: v('downloadUrl') },
+  secondary: { label: 'Open the view in ArmorCode', url: v('viewUrl') },
+  reason: viewReason,
+  footer: 'operational',
 });
 
 /** A saved findings view's report, too large to attach: a download link instead. */
@@ -144,31 +207,8 @@ export const savedViewReportLink = defineTemplate({
     expirationTimeInHours: { about: 'How many hours the download link works, as a number' },
   },
   sample: { ...viewSample, downloadUrl: `${SAMPLE_APP_URL}/downloads/findings-view-4471.csv`, expirationTimeInHours: 72 },
-  build: () => ({
-    subject: viewSubject,
-    preview: ['The CSV of findings from ', v('savedSearchName'), ' is ready to download.'],
-    eyebrow: 'Findings report',
-    tone: 'accent',
-    title: v('savedSearchName'),
-    subtitle: 'Saved findings view report',
-    blocks: [
-      message,
-      {
-        kind: 'text',
-        text: [
-          'The full list of findings is too large to attach. Download the CSV instead: the link expires in ',
-          { strong: [v('expirationTimeInHours'), ' hours'] },
-          '.',
-        ],
-      },
-      topFindingsLabel,
-      topFindings,
-    ],
-    action: { label: 'Download the CSV', url: v('downloadUrl') },
-    secondary: { label: 'Open the view in ArmorCode', url: v('viewUrl') },
-    reason: viewReason,
-    footer: 'operational',
-  }),
+  build: () => linkEmail(topFindings),
+  variants: variantsOf(linkEmail),
 });
 
 /** Someone shared a saved findings or tickets search. */

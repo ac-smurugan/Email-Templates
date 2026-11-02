@@ -78,9 +78,32 @@ export const listOpen = (l: Loop) => new Vtl(`#foreach(${ref(l.as)} in ${ref(l.l
 export const LIST_CLOSE = new Vtl('#{end}');
 /** Inside a `#foreach`: there's another item after this one (`$foreach.hasNext`, Velocity 1.7 and later). */
 export const HAS_NEXT = new Cond('$foreach.hasNext');
+/** Inside a `#foreach`: this is a multiple of `n`, and not the last item: the end of a row of `n`. */
+export const rowEnd = (n: number) => new Cond(`$foreach.count % ${n} == 0 && $foreach.hasNext`);
 
 /**
  * For the background-jobs emails, which are filled by plain `${name}` substitution, not Velocity:
  * `${name}`, or `${name:-default}`. Conditions, loops and quiet references don't work there.
  */
 export const plain = (name: string, fallback?: string) => new Vtl(`\${${name}${fallback !== undefined ? `:-${fallback}` : ''}}`);
+
+/** A value with a rating name to color: its opening tag for the HTML, and the rating's name. */
+export interface RatingTag {
+  value: string;
+  open: string;
+}
+
+/**
+ * A value, tidied: a whole number the backend sends as `328.0` is shown as `328`, and (in the HTML)
+ * a rating name (Critical, High, …) is wrapped in `ratings`' opening tag. Anything else is shown
+ * as it is, so dates, text and versions like `v2.0` are never touched. `$acV` is this construct's
+ * own variable.
+ */
+export function tidy(name: string, ratings: readonly RatingTag[] = []): Vtl {
+  const set = `#set($acV = "$!{${name}}")#if($acV.matches("^\\d+\\.0$"))#set($acV = $acV.substring(0, $acV.length() - 2))#end`;
+  const shown = ESCAPE_HTML ? '$!esc.html($acV)' : '$acV';
+  const colored = ratings.length
+    ? `${ratings.map((r, i) => `#${i ? 'elseif' : 'if'}($acV == "${r.value}")${r.open}${shown}</span>`).join('')}#{else}${shown}#{end}`
+    : shown;
+  return new Vtl(`${set}${colored}`, `${set}$acV`);
+}

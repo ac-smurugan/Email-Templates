@@ -21,7 +21,7 @@ const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 /** The placeholder names a template refers to, leaving out loop variables and their fields. */
 export function referenced(template: string): Set<string> {
   // `$foreach` is Velocity's own loop variable (`$foreach.hasNext`), not a placeholder.
-  const loopVars = new Set(['foreach', ...[...template.matchAll(/#foreach\(\$(\w+) in \$[\w.]+\)/g)].map((m) => m[1]!)]);
+  const loopVars = new Set(['foreach', ...[...template.matchAll(/#set\(\$(\w+)/g)].map((m) => m[1]!), ...[...template.matchAll(/#foreach\(\$(\w+) in \$[\w.]+\)/g)].map((m) => m[1]!)]);
   const names = new Set<string>();
   const add = (path: string) => {
     const clean = path.replace(/\.size\(\)$/, '');
@@ -37,7 +37,8 @@ export function referenced(template: string): Set<string> {
 export function problems(t: EmailTemplate): string[] {
   const out: string[] = [];
   const declared = new Set(Object.keys(t.fields));
-  const used = new Set([...referenced(t.html), ...referenced(t.text), ...referenced(t.subject)]);
+  const layouts = t.variants.flatMap((v) => [v.html, v.text]);
+  const used = new Set([...referenced(t.html), ...referenced(t.text), ...referenced(t.subject), ...layouts.flatMap((l) => [...referenced(l)])]);
   const isDeclared = (name: string) => declared.has(name) || declared.has(name.split('.')[0]!);
   for (const name of used) if (!isDeclared(name)) out.push(`uses \${${name}} but doesn't list it in fields`);
   for (const name of declared)
@@ -48,7 +49,12 @@ export function problems(t: EmailTemplate): string[] {
   }
   if (t.engine === 'substitution' && /#if|#foreach|\$!/.test(t.html + t.text))
     out.push('is filled by plain substitution, but uses Velocity conditions, loops or quiet references');
-  for (const [label, template] of [['HTML', t.html], ['text', t.text], ['subject', t.subject]] as const) {
+  for (const [label, template] of [
+    ['HTML', t.html],
+    ['text', t.text],
+    ['subject', t.subject],
+    ...t.variants.filter((v) => v.id !== 'default').flatMap((v) => [[`${v.label} HTML`, v.html], [`${v.label} text`, v.text]] as const),
+  ] as const) {
     try {
       const { output, missing } = fill(template, t.sample);
       if (missing.length) out.push(`${label}: sample leaves ${missing.join(', ')} empty`);
@@ -69,6 +75,10 @@ function main() {
   for (const t of TEMPLATES) {
     writeFileSync(`${DIST}${t.id}.html`, t.html);
     writeFileSync(`${DIST}${t.id}.txt`, t.text);
+    for (const v of t.variants.filter((x) => x.id !== 'default')) {
+      writeFileSync(`${DIST}${t.id}.${v.id}.html`, v.html);
+      writeFileSync(`${DIST}${t.id}.${v.id}.txt`, v.text);
+    }
     for (const problem of problems(t)) {
       console.error(`✗ ${t.id}: ${problem}`);
       failed++;

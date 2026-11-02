@@ -31,7 +31,7 @@ createServer((req, res) => {
       const t = findEmail(email[1]!);
       if (!t) return send(404, 'text/plain', 'No such email');
       const scheme = url.searchParams.get('scheme') === 'dark' ? 'dark' : 'light';
-      return send(200, 'text/html', emailHtml(t, scheme));
+      return send(200, 'text/html', emailHtml(t, scheme, url.searchParams.get('variant') ?? 'default'));
     }
     const pdf = url.pathname.match(/^\/pdf\/([\w-]+)$/);
     if (pdf) {
