@@ -1,6 +1,6 @@
 import { Html, markup, safeUrl, type Piece } from './escape.ts';
 import { badgeFile } from './icons.ts';
-import { Cond, ELSE, Vtl, IF_CLOSE, LIST_CLOSE, elseIf, ifOpen, is, listOpen, plain, v, type Loop } from './placeholders.ts';
+import { Cond, ELSE, HAS_NEXT, Vtl, IF_CLOSE, LIST_CLOSE, elseIf, ifOpen, is, listOpen, plain, v, type Loop } from './placeholders.ts';
 import {
   DARK,
   FONT,
@@ -32,7 +32,9 @@ export type Inline =
   /** A dot colored by a placeholder holding a rating name ("Critical", "High", …). */
   | { ratingOf: string }
   /** The first branch whose condition holds; `else` (or nothing) when none does. */
-  | { choose: readonly (readonly [Cond, Rich])[]; else?: Rich };
+  | { choose: readonly (readonly [Cond, Rich])[]; else?: Rich }
+  /** `item` for each entry of a list, on one line, with `separator` between them. */
+  | { each: Loop; item: Rich; separator?: string };
 export type Rich = Inline | readonly Inline[];
 
 /** Rich text shown only when `cond` holds, or `otherwise`. */
@@ -56,6 +58,11 @@ export type Block = (
       kind: 'stats';
       items: readonly { label: string; value: Rich; rating?: Rating; change?: Rich; trend?: 'better' | 'worse' | 'same'; when?: Cond }[];
     }
+  /**
+   * A picture, like a dashboard snapshot: full width in a well, linking to `url` when there is one.
+   * `src` can be a URL or a `cid:` reference to an inline attachment.
+   */
+  | { kind: 'image'; src: Href; alt: Href; url?: Href; width: number; height?: number }
   /** Findings by risk rating, as a bar and a legend. Fixed counts only: the bar is drawn here. */
   | { kind: 'risk'; label: string; counts: Partial<Record<Rating, number>> }
   /** A small table of rows. */
@@ -87,6 +94,9 @@ function hrefHtml(href: Href): Piece {
   const first = href[0];
   return typeof first === 'string' && !/^https?:\/\//.test(first) ? 'about:blank' : (href as readonly (string | Vtl)[]);
 }
+
+/** An image's source: like a link's address, but an inline attachment (`cid:`) is allowed too. */
+const srcHtml = (src: Href): Piece => (typeof src === 'string' && src.startsWith('cid:') ? src : hrefHtml(src));
 
 /** An address as plain text. */
 const hrefText = (href: Href) => (Array.isArray(href) ? href : [href]).map(String).join('');
@@ -177,6 +187,15 @@ function chooseVtl<T>(inline: Extract<Inline, { choose: unknown }>, render: (ric
   ];
 }
 
+function eachVtl<T>(inline: Extract<Inline, { each: unknown }>, render: (rich: Rich) => T): (T | Vtl | string)[] {
+  return [
+    listOpen(inline.each),
+    render(inline.item),
+    ...(inline.separator ? [ifOpen(HAS_NEXT), inline.separator, IF_CLOSE] : []),
+    LIST_CLOSE,
+  ];
+}
+
 const parts = (rich: Rich) => (Array.isArray(rich) ? rich : [rich]) as readonly Inline[];
 
 function inlineHtml(rich: Rich): Html {
@@ -187,6 +206,7 @@ function inlineHtml(rich: Rich): Html {
       return markup`<code style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:14px">${inlineHtml(part.code)}</code>`;
     if ('rating' in part) return dot(RATING_COLORS[part.rating]);
     if ('ratingOf' in part) return dot(ratingColorOf(part.ratingOf));
+    if ('each' in part) return eachVtl(part, inlineHtml);
     return chooseVtl(part, inlineHtml);
   })}`;
 }
@@ -202,6 +222,7 @@ export function richText(rich: Rich): string {
       if ('strong' in part) return richText(part.strong);
       if ('code' in part) return richText(part.code);
       if ('rating' in part || 'ratingOf' in part) return '';
+      if ('each' in part) return eachVtl(part, richText).map(String).join('');
       return chooseVtl(part, richText).join('');
     })
     .join('');
@@ -281,6 +302,10 @@ function blockHtml(block: Block): Html {
           return markup`<td valign="top" width="${Math.floor(100 / block.items.length)}%" style="padding-right:12px"><p class="zm" style="margin:0;font-size:12px;line-height:16px;color:${LIGHT.muted}">${stat.rating ? markup`${dot(RATING_COLORS[stat.rating])}&nbsp;` : ''}${stat.label}</p><p class="zf" style="margin:2px 0 0;${type('stat')};font-weight:600;color:${LIGHT.fg}">${inlineHtml(stat.value)}</p>${stat.change ? guard(stat.when, markup`<p class="${cls}" style="margin:0;font-size:12px;line-height:16px;color:${color}">${inlineHtml(stat.change)}</p>`) : ''}</td>`;
         })}</tr></table>`,
       );
+    }
+    case 'image': {
+      const img = markup`<img src="${srcHtml(block.src)}" alt="${block.alt as Piece}" width="${block.width}"${block.height ? markup` height="${block.height}"` : ''} style="display:block;width:100%;max-width:${block.width}px;height:auto;border:0;border-radius:6px">`;
+      return markup`<table ${T} width="100%" class="zw" style="background:${LIGHT.well};border-radius:${RADIUS.well}px"><tr><td style="padding:8px">${block.url ? markup`<a href="${hrefHtml(block.url)}" style="display:block">${img}</a>` : img}</td></tr></table>`;
     }
     case 'risk': {
       const present = RATINGS.filter((r) => block.counts[r]);
@@ -389,6 +414,8 @@ function blockText(block: Block): string {
       return block.items
         .map((stat) => `${stat.label}: ${richText(stat.value)}${stat.change ? guardText(stat.when, ` (${richText(stat.change)})`).replace(/\n/g, '') : ''}\n`)
         .join('');
+    case 'image':
+      return `[${hrefText(block.alt)}]${block.url ? ` ${hrefText(block.url)}` : ''}\n`;
     case 'risk':
       return `${block.label}: ${RATINGS.filter((r) => block.counts[r])
         .map((r) => `${block.counts[r]!.toLocaleString('en-US')} ${RATING_NAMES[r]}`)

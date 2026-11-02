@@ -20,7 +20,8 @@ const DIST = fileURLToPath(new URL('../dist/', import.meta.url));
 
 /** The placeholder names a template refers to, leaving out loop variables and their fields. */
 export function referenced(template: string): Set<string> {
-  const loopVars = new Set([...template.matchAll(/#foreach\(\$(\w+) in \$[\w.]+\)/g)].map((m) => m[1]!));
+  // `$foreach` is Velocity's own loop variable (`$foreach.hasNext`), not a placeholder.
+  const loopVars = new Set(['foreach', ...[...template.matchAll(/#foreach\(\$(\w+) in \$[\w.]+\)/g)].map((m) => m[1]!)]);
   const names = new Set<string>();
   const add = (path: string) => {
     const clean = path.replace(/\.size\(\)$/, '');

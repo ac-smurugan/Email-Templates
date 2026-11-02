@@ -15,11 +15,11 @@ import { fill } from './fill.ts';
 /** What `${amcLogoUrl}` should show: ArmorCode's mark, without the white wordmark (the emails set the name as text). */
 export const LOGO = readFileSync(fileURLToPath(new URL('../../assets/armorcode-mark.svg', import.meta.url)), 'utf8');
 
-/** A badge image from `assets/icons/`, or nothing. */
-export function badge(file: string): Buffer | undefined {
+/** A PNG from `assets/icons/` (badges) or `assets/samples/` (sample images), or nothing. */
+export function asset(folder: 'icons' | 'samples', file: string): Buffer | undefined {
   if (!/^[\w-]+\.png$/.test(file)) return undefined;
   try {
-    return readFileSync(fileURLToPath(new URL(`../../assets/icons/${file}`, import.meta.url)));
+    return readFileSync(fileURLToPath(new URL(`../../assets/${folder}/${file}`, import.meta.url)));
   } catch {
     return undefined;
   }

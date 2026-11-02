@@ -41,7 +41,7 @@ Every email has the same shape:
 │ ● Eyebrow (status dot + 1–2 words) │   tone: accent | ok | warn | danger
 │ Title (21px semibold)              │
 │ Subtitle (optional, 13px muted)    │
-│ blocks…                            │   text, quote, details, list, items, stats, risk, table
+│ blocks…                            │   text, quote, details, list, items, stats, risk, table, image
 │ [ One primary button ]             │
 │ Secondary link (optional)          │
 └────────────────────────────────────┘
@@ -65,6 +65,7 @@ Rules:
 - **Phone.** Below 620px the padding shrinks and stat rows stack.
 - **Outlook.** Table layout, Arial instead of the system font stack, and a fixed 600px wrapper in MSO conditionals.
 - **Icons.** The eyebrow starts with a 20px round badge: a glyph from ArmorCode Zero's icon set in a dark shade of the email's tone color, on a light tint of it (an opaque image, so it looks the same on a light or a dark card, and the glyph keeps at least 6:1 contrast) (the Central Icon System). The glyph says what the email is about, and the color says how it went. Every failure uses `exclamation`, so a failure doesn't rely on color alone. Each email's icon is listed in `src/icons.ts`.
+- **Images.** The `image` block shows a picture, like a dashboard snapshot, full width in a well (520px, so a 1040px image is sharpest), linking where the template says. Its source is a placeholder: a hosted URL or a `cid:` inline attachment.
 - **Plain text** is rendered from the same content as the HTML.
 
 | Token | Light | Dark |
@@ -527,6 +528,7 @@ The build fails when an email:
 | `notificationSettingsUrl` | **New** | Required | ArmorCode’s notification settings page |
 | `dashboardName` | Today | Required | The dashboard’s name |
 | `dashboardUrl` | Today | Required | The live dashboard in ArmorCode (today’s “View Full Dashboard on ArmorCode Platform” link) |
+| `dashboardImageSrc` | **New** | Required | The dashboard snapshot today’s email shows: a `cid:` reference to the inline image attachment, or a hosted https URL. Shown 520px wide, so an image about 1040px wide is sharpest |
 
 #### Scheduled dashboard report (custom message) (`dashboard-report-custom`)
 
@@ -547,6 +549,7 @@ The build fails when an email:
 | `notificationSettingsUrl` | **New** | Required | ArmorCode’s notification settings page |
 | `dashboardName` | Today | Required | The dashboard’s name |
 | `dashboardUrl` | Today | Required | The live dashboard in ArmorCode (today’s “View Full Dashboard on ArmorCode Platform” link) |
+| `dashboardImageSrc` | **New** | Required | The dashboard snapshot today’s email shows: a `cid:` reference to the inline image attachment, or a hosted https URL. Shown 520px wide, so an image about 1040px wide is sharpest |
 | `customEmailSubject` | Today | Optional | The subject the report’s owner wrote; the default subject when empty |
 | `customEmailBody` | Today | Optional | The message the report’s owner wrote. Rendered from markdown today: give it as already-rendered HTML |
 
@@ -612,8 +615,7 @@ The build fails when an email:
 | `viewUrl` | Today | Required | The view in ArmorCode (today’s “clicking this link” link) |
 | `customEmailSubject` | Today | Optional | The subject the tenant configured for these reports; the default subject when empty |
 | `customMessage` | Today | Optional | The message configured for the report, when there is one. Rendered from markdown today: give it as already-rendered HTML |
-| `findings` | **New** | Required | Up to 10 findings matching the view, each with `id` (today’s findingId) and `summary` (new: the values of the selected export columns, joined with “ · ”). Today each value has a column of its own |
-| `columnNames` | **New** | Optional | The selected export columns, joined with “, ” (today they are the table’s column headers) |
+| `findings` | **New** | Required | Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low, for the dot; optional) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value` |
 
 #### Saved findings view report (download link) (`saved-view-report-link`)
 
@@ -636,8 +638,7 @@ The build fails when an email:
 | `viewUrl` | Today | Required | The view in ArmorCode (today’s “clicking this link” link) |
 | `customEmailSubject` | Today | Optional | The subject the tenant configured for these reports; the default subject when empty |
 | `customMessage` | Today | Optional | The message configured for the report, when there is one. Rendered from markdown today: give it as already-rendered HTML |
-| `findings` | **New** | Required | Up to 10 findings matching the view, each with `id` (today’s findingId) and `summary` (new: the values of the selected export columns, joined with “ · ”). Today each value has a column of its own |
-| `columnNames` | **New** | Optional | The selected export columns, joined with “, ” (today they are the table’s column headers) |
+| `findings` | **New** | Required | Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low, for the dot; optional) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value` |
 | `downloadUrl` | Today | Required | The full CSV to download; the link expires (today’s “download the file using this link” link) |
 | `expirationTimeInHours` | Today | Required | How many hours the download link works, as a number |
 

@@ -76,6 +76,8 @@ export interface Loop {
 export const loop = (list: string, as: string): Loop => ({ list, as });
 export const listOpen = (l: Loop) => new Vtl(`#foreach(${ref(l.as)} in ${ref(l.list)})`);
 export const LIST_CLOSE = new Vtl('#{end}');
+/** Inside a `#foreach`: there's another item after this one (`$foreach.hasNext`, Velocity 1.7 and later). */
+export const HAS_NEXT = new Cond('$foreach.hasNext');
 
 /**
  * For the background-jobs emails, which are filled by plain `${name}` substitution, not Velocity:

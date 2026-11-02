@@ -4,7 +4,7 @@
  * values here only; the built templates keep them.
  */
 import { createServer } from 'node:http';
-import { LOGO, badge, emailHtml, findEmail, findPdf, list, pdfHtml } from './data.ts';
+import { LOGO, asset, emailHtml, findEmail, findPdf, list, pdfHtml } from './data.ts';
 import { PAGE } from './page.ts';
 
 const PORT = Number(process.env.PORT ?? 4300);
@@ -19,10 +19,10 @@ createServer((req, res) => {
     if (url.pathname === '/') return send(200, 'text/html', PAGE);
     if (url.pathname === '/emails.json') return send(200, 'application/json', JSON.stringify(list()));
     if (url.pathname === '/sample-logo.svg') return send(200, 'image/svg+xml', LOGO);
-    const icon = url.pathname.match(/^\/icons\/([\w-]+\.png)$/);
-    if (icon) {
-      const png = badge(icon[1]!);
-      if (!png) return send(404, 'text/plain', 'No such icon');
+    const image = url.pathname.match(/^\/(icons|samples)\/([\w-]+\.png)$/);
+    if (image) {
+      const png = asset(image[1] as 'icons' | 'samples', image[2]!);
+      if (!png) return send(404, 'text/plain', 'No such image');
       res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-store' });
       return res.end(png);
     }

@@ -19,6 +19,7 @@ cpSync(fileURLToPath(new URL('../assets/icons/', import.meta.url)), `${SITE}icon
   recursive: true,
   filter: (source) => !source.includes('glyphs'),
 });
+cpSync(fileURLToPath(new URL('../assets/samples/', import.meta.url)), `${SITE}samples`, { recursive: true });
 
 const data = list();
 const broken = data.emails.filter((e) => e.problems.length);

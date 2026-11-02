@@ -3,18 +3,24 @@ import { SAMPLE_APP_URL, SAMPLE_BASE } from '../../samples.ts';
 import { defineTemplate, type Fields } from '../../template.ts';
 import { when, type Block, type Rich } from '../../layout.ts';
 
-// Dashboard reports and shares. Today's report emails show a snapshot image of the dashboard; the
-// layout has no image block, so these point to the live dashboard and the attached PDF instead.
+// Dashboard reports and shares. Like today's, the report emails show a snapshot image of the
+// dashboard that links to it, and the PDF of it is attached.
 
 const reportFields = {
   dashboardName: { about: 'The dashboard’s name' },
   dashboardUrl: { about: 'The live dashboard in ArmorCode (today’s “View Full Dashboard on ArmorCode Platform” link)' },
+  dashboardImageSrc: {
+    about:
+      'The dashboard snapshot today’s email shows: a `cid:` reference to the inline image attachment, or a hosted https URL. Shown 520px wide, so an image about 1040px wide is sharpest',
+    isNew: true,
+  },
 } satisfies Fields;
 
 const reportSample = {
   ...SAMPLE_BASE,
   dashboardName: 'Application security overview',
   dashboardUrl: `${SAMPLE_APP_URL}/dashboards/custom/218`,
+  dashboardImageSrc: '/samples/dashboard-snapshot.png',
 };
 
 const defaultSubject: Rich = ['Scheduled dashboard report: ', v('dashboardName')];
@@ -24,7 +30,14 @@ const reportBlocks: readonly Block[] = [
     kind: 'text',
     text: ['The scheduled report for ', { strong: v('dashboardName') }, ' is ready. The PDF of the dashboard is attached.'],
   },
-  { kind: 'text', text: 'Open the dashboard in ArmorCode to see the latest data and explore it further.' },
+  {
+    kind: 'image',
+    src: v('dashboardImageSrc'),
+    alt: ['Snapshot of the ', v('dashboardName'), ' dashboard'],
+    url: v('dashboardUrl'),
+    width: 520,
+  },
+  { kind: 'text', text: 'Click the snapshot or the button to open the live dashboard in ArmorCode.' },
   { kind: 'text', quiet: true, text: ['Button not working? Paste this link into your browser: ', v('dashboardUrl')] },
 ];
 

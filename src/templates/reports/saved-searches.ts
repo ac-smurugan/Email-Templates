@@ -18,15 +18,22 @@ const viewFields = {
   },
   findings: {
     about:
-      'Up to 10 findings matching the view, each with `id` (today’s findingId) and `summary` (new: the values of the selected export columns, joined with “ · ”). Today each value has a column of its own',
-    isNew: true,
-  },
-  columnNames: {
-    about: 'The selected export columns, joined with “, ” (today they are the table’s column headers)',
-    optional: true,
+      'Up to 10 findings matching the view, as today’s table rows. Each has `id` (today’s findingId), `url` (where today’s ID links), `summary`, `severity` (Critical, High, Medium or Low, for the dot; optional) and `cells`: the other columns the view shows, in order, each with `label` (today’s column header) and `value`',
     isNew: true,
   },
 } satisfies Fields;
+
+/** The columns today's sample report shows besides the ID and the summary. */
+const findingCells = (riskScore: string, riskRating: string, severity: string, findingScore: string, due: string) => [
+  { label: 'Risk score', value: riskScore },
+  { label: 'Status', value: 'Open' },
+  { label: 'Risk rating', value: riskRating },
+  { label: 'Severity', value: severity },
+  { label: 'Finding score', value: findingScore },
+  { label: 'Finding age', value: '22' },
+  { label: 'Resolution due', value: due },
+  { label: 'Group', value: 'Example Corp Payments' },
+];
 
 const viewSample = {
   ...SAMPLE_BASE,
@@ -34,11 +41,35 @@ const viewSample = {
   viewUrl: `${SAMPLE_APP_URL}/findings?view=4471`,
   customEmailSubject: '',
   customMessage: 'Please triage anything new in this list before Friday’s review.',
-  columnNames: 'Severity, Status, Product, Title',
   findings: [
-    { id: '88213409', summary: 'Critical · Open · Payments API · SQL injection in order lookup' },
-    { id: '88213377', summary: 'Critical · Open · Payments API · Hard-coded AWS secret key' },
-    { id: '88201954', summary: 'Critical · Confirmed · Checkout web · Deserialization of untrusted data' },
+    {
+      id: '88213409',
+      url: `${SAMPLE_APP_URL}/findings/88213409`,
+      summary: 'payments-api: SQL injection in the order lookup endpoint',
+      severity: 'Critical',
+      cells: findingCells('328.0', 'fairRiskScore', 'Critical', '41.0', '2026/10/18 01:19:56'),
+    },
+    {
+      id: '88213377',
+      url: `${SAMPLE_APP_URL}/findings/88213377`,
+      summary: 'payments-api: Hard-coded AWS secret key in the deploy script',
+      severity: 'High',
+      cells: findingCells('272.0', 'fairRiskScore', 'High', '34.0', '2026/10/25 01:19:56'),
+    },
+    {
+      id: '88201954',
+      url: `${SAMPLE_APP_URL}/findings/88201954`,
+      summary: 'checkout-web: Prototype pollution via crafted query parameters',
+      severity: 'Medium',
+      cells: findingCells('136.0', 'goodRiskScore', 'Medium', '17.0', '2026/11/08 01:19:56'),
+    },
+    {
+      id: '88201920',
+      url: `${SAMPLE_APP_URL}/findings/88201920`,
+      summary: 'checkout-web: Denial of service via an unbounded regular expression',
+      severity: 'Medium',
+      cells: findingCells('128.0', 'goodRiskScore', 'Medium', '16.0', '2026/11/08 01:16:25'),
+    },
   ],
 };
 
@@ -48,13 +79,23 @@ const viewSubject: Rich = [
 
 const message: Block = { kind: 'quote', label: 'Message', text: v('customMessage'), when: present('customMessage') };
 
+// Today's top-10 table has a column for each column the view shows, which is too wide for an email
+// on a phone. Each finding is a row instead: its summary as the link, and its other columns under it.
+const topFindingsLabel: Block = { kind: 'text', text: { strong: 'Top 10 findings matching the view' } };
+
 const topFindings: Block = {
-  kind: 'table',
-  title: 'Top 10 findings matching the view',
-  columns: [{ label: 'Finding' }, { label: 'Details' }],
+  kind: 'items',
   each: loop('findings', 'finding'),
-  item: { cells: [v('finding.id'), v('finding.summary')] },
-  more: when(present('columnNames'), ['The Details column shows ', v('columnNames'), '.']),
+  item: {
+    title: [when(present('finding.severity'), [{ ratingOf: 'finding.severity' }, ' ']), v('finding.summary')],
+    url: v('finding.url'),
+    meta: [
+      'ID ',
+      v('finding.id'),
+      ' · ',
+      { each: loop('finding.cells', 'cell'), item: [v('cell.label'), ': ', v('cell.value')], separator: ' · ' },
+    ],
+  },
 };
 
 const viewWho = 'The people the view is shared with, or the scheduled report’s recipients';
@@ -80,6 +121,7 @@ export const savedViewReport = defineTemplate({
     blocks: [
       message,
       { kind: 'text', text: 'The attached CSV has the full list of findings, with all their details.' },
+      topFindingsLabel,
       topFindings,
     ],
     action: { label: 'Open the view', url: v('viewUrl') },
@@ -119,6 +161,7 @@ export const savedViewReportLink = defineTemplate({
           '.',
         ],
       },
+      topFindingsLabel,
       topFindings,
     ],
     action: { label: 'Download the CSV', url: v('downloadUrl') },
