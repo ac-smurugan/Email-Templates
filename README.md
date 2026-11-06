@@ -168,17 +168,14 @@ The build fails when an email:
 | `amcLogoUrl` | Today | Required | The ArmorCode mark (the circles, without the white wordmark, which vanishes on light backgrounds): host assets/armorcode-mark@2x.png, shown 28px high |
 | `iconBaseUrl` | **New** | Required | Where the eyebrow badge images are hosted, with no trailing slash: host the PNGs in assets/icons/ there, shown 20px high |
 | `username` | Today | Required | Their ArmorCode user name |
-| `newPassword` | Today | Required | The new password |
 | `amcUrl` | Today | Required | The ArmorCode sign-in page |
-| `passwordExpiresAt` | **New** | Optional | When the new password stops working, as text (“October 15, 2026 at 12:00 AM UTC”) |
-| `mustChangePassword` | **New** | Optional | true when they must choose their own password at sign-in |
 | `supportEmail` | **New** | Optional | Who to contact when sign-in fails, if not their administrator |
 
-#### Username and password invite (`invite`)
+#### Username invite (`invite`)
 
 - **Subject:** You’re invited to ArmorCode
 
-- **Who / when:** Someone invited to ArmorCode with a user name and password; An administrator adds them to ArmorCode
+- **Who / when:** Someone invited to ArmorCode with a user name; An administrator adds them to ArmorCode
 
 - **Today:** authserver, java-utils / UserRegistrationServiceImpl · template/email/username-password-invite.html
 
@@ -191,13 +188,10 @@ The build fails when an email:
 | `amcLogoUrl` | Today | Required | The ArmorCode mark (the circles, without the white wordmark, which vanishes on light backgrounds): host assets/armorcode-mark@2x.png, shown 28px high |
 | `iconBaseUrl` | **New** | Required | Where the eyebrow badge images are hosted, with no trailing slash: host the PNGs in assets/icons/ there, shown 20px high |
 | `username` | Today | Required | Their ArmorCode user name |
-| `password` | Today | Required | Their first password |
 | `amcUrl` | Today | Required | The ArmorCode sign-in page |
 | `inviterName` | **New** | Optional | Who invited them (“John Smith”) |
 | `organizationName` | **New** | Optional | The organization they’re joining (“Example Corp”) |
 | `roleName` | **New** | Optional | The role they’re given (“Security Analyst”) |
-| `passwordExpiresAt` | **New** | Optional | When the first password stops working, as text |
-| `mustChangePassword` | **New** | Optional | true when they must choose their own password at sign-in |
 | `supportEmail` | **New** | Optional | Who to contact when sign-in fails, if not their administrator |
 
 #### Access request after a failed sign-in (`login-request`)
