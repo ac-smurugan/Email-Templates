@@ -4,7 +4,7 @@
  * values here only; the built templates keep them.
  */
 import { createServer } from 'node:http';
-import { LOGO, asset, emailHtml, findEmail, findPdf, list, pdfHtml } from './data.ts';
+import { LOGO, asset, browserModule, emailHtml, findEmail, findPdf, list, model, pdfHtml } from './data.ts';
 import { PAGE } from './page.ts';
 
 const PORT = Number(process.env.PORT ?? 4300);
@@ -19,6 +19,16 @@ createServer((req, res) => {
     if (url.pathname === '/') return send(200, 'text/html', PAGE);
     if (url.pathname === '/emails.json') return send(200, 'application/json', JSON.stringify(list()));
     if (url.pathname === '/sample-logo.svg') return send(200, 'image/svg+xml', LOGO);
+    const js = url.pathname.match(/^\/js\/([\w-]+)\.js$/);
+    if (js) {
+      const code = browserModule(js[1]!);
+      return code ? send(200, 'text/javascript', code) : send(404, 'text/plain', 'No such module');
+    }
+    const json = url.pathname.match(/^\/model\/([\w-]+)\.json$/);
+    if (json) {
+      const t = findEmail(json[1]!);
+      return t ? send(200, 'application/json', model(t)) : send(404, 'text/plain', 'No such email');
+    }
     const image = url.pathname.match(/^\/(icons|samples)\/([\w-]+\.png)$/);
     if (image) {
       const png = asset(image[1] as 'icons' | 'samples', image[2]!);

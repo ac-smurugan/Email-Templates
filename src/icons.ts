@@ -72,6 +72,12 @@ export const ICON_BY_ID: Record<string, string> = {
   'runbook-findings': 'play',
   'runbook-findings-report': 'play',
   'runbook-tickets': 'ticket',
+  // Runbook templates
+  'runbook-default-finding': 'shield',
+  'runbook-default-grouped': 'list-bullets',
+  'runbook-critical-alert': 'bell-active',
+  'runbook-weekly-digest': 'line-chart-1',
+  'runbook-owner-nudge': 'user',
   // Platform notices
   'project-cloned': 'square-behind-square-1',
   'aql-migration': 'code-brackets',

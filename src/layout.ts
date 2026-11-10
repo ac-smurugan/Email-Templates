@@ -379,28 +379,37 @@ function blockHtml(block: Block): Html {
   }
 }
 
-const row = (top: number, inner: Html) => markup`<tr><td style="padding-top:${top}px">${inner}</td></tr>`;
+const row = (top: number, inner: Html, mark: Piece = '') => markup`<tr${mark}><td style="padding-top:${top}px">${inner}</td></tr>`;
 
 /** Hidden text after the preview line, so inboxes don't pull the body's first words in after it. */
 const SPACER = new Html('&#847;&zwnj;&nbsp;'.repeat(8));
 
-export function toHtml(email: Email): string {
+/**
+ * The email as HTML. `annotate` (the preview's builder only) marks each part, `data-part` for the
+ * heading, button and footer and `data-block` for each block, so a click can select it.
+ */
+export function toHtml(email: Email, options: { annotate?: boolean } = {}): string {
   const base = basePlaceholders(email);
+  const mark = (attr: string, value: string | number) => (options.annotate ? new Html(` data-${attr}="${value}"`) : '');
   const button = markup`<table ${T}><tr><td class="zb" bgcolor="${LIGHT.accent}" style="border-radius:${RADIUS.button}px;mso-padding-alt:10px 18px"><a class="zb" href="${hrefHtml(email.action.url)}" style="display:inline-block;padding:10px 18px;border-radius:${RADIUS.button}px;background:${LIGHT.accent};color:#ffffff;font-size:14px;line-height:20px;font-weight:600">${inlineHtml(email.action.label)}</a></td></tr></table>`;
   const content = [
     email.icon
-      ? markup`<tr><td><table ${T}><tr><td style="padding-right:8px"><img src="${base.iconBaseUrl}/${badgeFile(email.icon, email.tone)}" width="20" height="20" alt="" style="display:block;border-radius:10px"></td><td class="zm" style="${SMALL}">${email.eyebrow}</td></tr></table></td></tr>`
-      : markup`<tr><td class="zm" style="${SMALL}">${dot(TONES[email.tone])}&nbsp; ${email.eyebrow}</td></tr>`,
+      ? markup`<tr${mark('part', 'heading')}><td><table ${T}><tr><td style="padding-right:8px"><img src="${base.iconBaseUrl}/${badgeFile(email.icon, email.tone)}" width="20" height="20" alt="" style="display:block;border-radius:10px"></td><td class="zm" style="${SMALL}">${email.eyebrow}</td></tr></table></td></tr>`
+      : markup`<tr${mark('part', 'heading')}><td class="zm" style="${SMALL}">${dot(TONES[email.tone])}&nbsp; ${email.eyebrow}</td></tr>`,
     row(
       6,
       markup`<h1 class="zf" style="margin:0;${type('title')};font-weight:600;color:${LIGHT.fg}">${inlineHtml(email.title)}</h1>${email.subtitle ? markup`<p class="zm" style="margin:2px 0 0;${SMALL}">${inlineHtml(email.subtitle)}</p>` : ''}`,
+      mark('part', 'heading'),
     ),
-    email.blocks.map((block, i) => guard(block.when, row(i === 0 ? SPACE.firstBlock : SPACE.block, blockHtml(block)))),
-    row(SPACE.button, button),
+    email.blocks.map((block, i) =>
+      guard(block.when, row(i === 0 ? SPACE.firstBlock : SPACE.block, blockHtml(block), mark('block', (block as { ref?: number }).ref ?? i))),
+    ),
+    row(SPACE.button, button, mark('part', 'button')),
     email.secondary
       ? row(
           14,
           markup`<p style="margin:0;${type('small')}"><a class="za" href="${hrefHtml(email.secondary.url)}" style="color:${LIGHT.link}">${inlineHtml(email.secondary.label)}</a></p>`,
+          mark('part', 'button'),
         )
       : '',
   ];
@@ -413,7 +422,7 @@ export function toHtml(email: Email): string {
       : '';
 
   // One line, as mail apps get it: the markup has no whitespace a template didn't put there.
-  return markup`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${inlineHtml(email.subject)}</title><style>${new Html(css)}</style>${new Html(MSO)}</head><body class="zc" style="margin:0;padding:0;background:${LIGHT.canvas}"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${inlineHtml(email.preview)}${SPACER}</div><table ${T} width="100%" class="zc" style="background:${LIGHT.canvas}"><tr><td align="center" class="zo" style="padding:${SPACE.canvas}"><!--[if mso]><table ${T} width="${WIDTH.max}"><tr><td><![endif]--><table ${T} width="100%" style="max-width:${WIDTH.max}px"><tr><td style="padding:0 4px 16px"><table ${T}><tr><td style="padding-right:10px"><img src="${base.logoUrl}" height="28" alt="" style="display:block;height:28px;width:auto"></td><td class="zf" style="font-size:14px;line-height:20px;font-weight:600;color:${LIGHT.fg}">${COMPANY}</td></tr></table></td></tr><tr><td class="zk zp" style="background:${LIGHT.card};border-radius:${RADIUS.card}px;padding:${SPACE.card}px;word-break:break-word"><table ${T} width="100%">${content}</table></td></tr><tr><td class="zm" style="padding:20px 4px 0;${type('caption')};color:${LIGHT.muted};word-break:break-word">${inlineHtml(email.reason)}${settings}${extra}<br>${footerLink('Terms', TERMS_URL)} &nbsp;&middot;&nbsp; ${footerLink('Privacy', PRIVACY_URL)}<br>${ADDRESS}</td></tr></table><!--[if mso]></td></tr></table><![endif]--></td></tr></table></body></html>`
+  return markup`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="x-apple-disable-message-reformatting"><meta name="color-scheme" content="light dark"><meta name="supported-color-schemes" content="light dark"><title>${inlineHtml(email.subject)}</title><style>${new Html(css)}</style>${new Html(MSO)}</head><body class="zc" style="margin:0;padding:0;background:${LIGHT.canvas}"><div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${inlineHtml(email.preview)}${SPACER}</div><table ${T} width="100%" class="zc" style="background:${LIGHT.canvas}"><tr><td align="center" class="zo" style="padding:${SPACE.canvas}"><!--[if mso]><table ${T} width="${WIDTH.max}"><tr><td><![endif]--><table ${T} width="100%" style="max-width:${WIDTH.max}px"><tr><td style="padding:0 4px 16px"><table ${T}><tr><td style="padding-right:10px"><img src="${base.logoUrl}" height="28" alt="" style="display:block;height:28px;width:auto"></td><td class="zf" style="font-size:14px;line-height:20px;font-weight:600;color:${LIGHT.fg}">${COMPANY}</td></tr></table></td></tr><tr><td class="zk zp" style="background:${LIGHT.card};border-radius:${RADIUS.card}px;padding:${SPACE.card}px;word-break:break-word"><table ${T} width="100%">${content}</table></td></tr><tr><td${mark('part', 'footer')} class="zm" style="padding:20px 4px 0;${type('caption')};color:${LIGHT.muted};word-break:break-word">${inlineHtml(email.reason)}${settings}${extra}<br>${footerLink('Terms', TERMS_URL)} &nbsp;&middot;&nbsp; ${footerLink('Privacy', PRIVACY_URL)}<br>${ADDRESS}</td></tr></table><!--[if mso]></td></tr></table><![endif]--></td></tr></table></body></html>`
     .value;
 }
 

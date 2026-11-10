@@ -10,6 +10,8 @@ import { problems } from '../build.ts';
 import { PDFS } from '../pdf/index.ts';
 import { GROUPS, type EmailTemplate } from '../template.ts';
 import { TEMPLATES } from '../templates/index.ts';
+import { stripTypeScriptTypes } from 'node:module';
+import { Cond, Vtl } from '../placeholders.ts';
 import { fill } from './fill.ts';
 
 /** What `${amcLogoUrl}` should show: ArmorCode's mark, without the white wordmark (the emails set the name as text). */
@@ -61,4 +63,50 @@ export function emailHtml(t: EmailTemplate, scheme: 'light' | 'dark', variant = 
 
 export function pdfHtml(p: NonNullable<ReturnType<typeof findPdf>>): string {
   return outside(fill(p.html, p.sample).output);
+}
+
+// ——— The editor ———
+// The preview's Edit tab renders in the browser, so it works on the static site too: it gets each
+// email's content model as JSON, and the modules that render it, with their types stripped.
+
+/** The modules the editor runs, by the name it imports them as. */
+const BROWSER_MODULES: Record<string, string> = {
+  layout: '../layout.ts',
+  escape: '../escape.ts',
+  placeholders: '../placeholders.ts',
+  tokens: '../tokens.ts',
+  icons: '../icons.ts',
+  fill: './fill.ts',
+  editor: './editor.ts',
+};
+export const BROWSER_MODULE_NAMES = Object.keys(BROWSER_MODULES);
+
+/** A module as the browser loads it: types stripped, and every `.ts` import pointing at `./name.js`. */
+export function browserModule(name: string): string | undefined {
+  const source = BROWSER_MODULES[name];
+  if (!source) return undefined;
+  const ts = readFileSync(fileURLToPath(new URL(source, import.meta.url)), 'utf8');
+  // Node calls type stripping experimental and warns every time; it's what runs these files anyway.
+  const emit = process.emitWarning;
+  process.emitWarning = () => {};
+  let js: string;
+  try {
+    js = stripTypeScriptTypes(ts);
+  } finally {
+    process.emitWarning = emit;
+  }
+  return js.replace(/from '(?:\.\.?\/)+(?:[\w-]+\/)*([\w-]+)\.ts'/g, "from './$1.js'");
+}
+
+/**
+ * An email's model for the editor: its placeholders, sample values, and each layout's content.
+ * Velocity code and conditions are marked so the browser can turn them back into `Vtl` and `Cond`.
+ */
+export function model(t: EmailTemplate): string {
+  const layouts = t.variants.length
+    ? t.variants.map((v) => ({ id: v.id, label: v.label, email: v.email }))
+    : [{ id: 'default', label: '', email: t.email }];
+  return JSON.stringify({ id: t.id, fields: t.fields, sample: t.sample, layouts }, (_key, value) =>
+    value instanceof Vtl ? { $vtl: [value.html, value.text] } : value instanceof Cond ? { $cond: value.expr } : value,
+  );
 }

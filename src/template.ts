@@ -41,6 +41,7 @@ export const GROUPS = [
   'Uploads',
   'Risk register',
   'Tools & runbooks',
+  'Runbook templates',
   'Platform notices',
 ] as const;
 export type Group = (typeof GROUPS)[number];
@@ -69,7 +70,7 @@ export interface EmailTemplate {
    * Other layouts of the same email, for comparing in the preview: this email's own is the first,
    * `default`. Empty when there's only one.
    */
-  variants: { id: string; label: string; html: string; text: string }[];
+  variants: { id: string; label: string; email: Email; html: string; text: string }[];
 }
 
 export function defineTemplate(spec: {
@@ -108,10 +109,10 @@ export function defineTemplate(spec: {
     text: toText(email),
     variants: spec.variants
       ? [
-          { id: 'default', label: spec.variants.defaultLabel, html: toHtml(email), text: toText(email) },
+          { id: 'default', label: spec.variants.defaultLabel, email, html: toHtml(email), text: toText(email) },
           ...spec.variants.others.map((other) => {
             const alt = { ...other.build(), icon };
-            return { id: other.id, label: other.label, html: toHtml(alt), text: toText(alt) };
+            return { id: other.id, label: other.label, email: alt, html: toHtml(alt), text: toText(alt) };
           }),
         ]
       : [],

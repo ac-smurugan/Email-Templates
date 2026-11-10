@@ -9,6 +9,7 @@ import { EMAILS as accessAlerts } from './access-alerts/index.ts';
 import { EMAILS as exports } from './exports/index.ts';
 import { EMAILS as reports } from './reports/index.ts';
 import { EMAILS as riskNotices } from './risk-notices/index.ts';
+import { EMAILS as runbookTemplates } from './runbook/index.ts';
 
 const ALL: EmailTemplate[] = [
   passwordReset,
@@ -23,6 +24,7 @@ const ALL: EmailTemplate[] = [
   ...reports,
   ...exports,
   ...riskNotices,
+  ...runbookTemplates,
 ];
 
 /** Every email, by group, in the order the preview and the README list them. */
