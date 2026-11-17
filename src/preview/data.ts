@@ -77,6 +77,7 @@ const BROWSER_MODULES: Record<string, string> = {
   tokens: '../tokens.ts',
   icons: '../icons.ts',
   fill: './fill.ts',
+  body: './body.ts',
   editor: './editor.ts',
 };
 export const BROWSER_MODULE_NAMES = Object.keys(BROWSER_MODULES);

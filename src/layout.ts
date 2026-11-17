@@ -130,8 +130,8 @@ export interface Email {
   title: Rich;
   subtitle?: Rich;
   blocks: readonly Block[];
-  /** The one thing to do, as the button. */
-  action: Link;
+  /** The one thing to do, as the button. An email can have none, or just a quiet link (`secondary`). */
+  action?: Link;
   /** A quieter second link, under the button. */
   secondary?: Link;
   /** Why this person got it, first in the footer. */
@@ -300,9 +300,10 @@ const label = (text: Rich, gap = 4) => markup`<p class="zm" style="margin:0 0 ${
 function blockHtml(block: Block): Html {
   switch (block.kind) {
     case 'text':
+      // A paragraph written over several lines keeps its line breaks.
       return block.quiet
-        ? markup`<p class="zm" style="${QUIET}">${inlineHtml(block.text)}</p>`
-        : markup`<p class="zf" style="${P}">${inlineHtml(block.text)}</p>`;
+        ? markup`<p class="zm" style="${QUIET}${richText(block.text).includes('\n') ? ';white-space:pre-line' : ''}">${inlineHtml(block.text)}</p>`
+        : markup`<p class="zf" style="${P}${richText(block.text).includes('\n') ? ';white-space:pre-line' : ''}">${inlineHtml(block.text)}</p>`;
     case 'quote':
       return well(
         markup`${block.label ? label(block.label) : ''}<p class="zf" style="margin:0;${type('detail')};color:${LIGHT.fg};white-space:pre-line">${inlineHtml(block.text)}</p>`,
@@ -391,7 +392,7 @@ const SPACER = new Html('&#847;&zwnj;&nbsp;'.repeat(8));
 export function toHtml(email: Email, options: { annotate?: boolean } = {}): string {
   const base = basePlaceholders(email);
   const mark = (attr: string, value: string | number) => (options.annotate ? new Html(` data-${attr}="${value}"`) : '');
-  const button = markup`<table ${T}><tr><td class="zb" bgcolor="${LIGHT.accent}" style="border-radius:${RADIUS.button}px;mso-padding-alt:10px 18px"><a class="zb" href="${hrefHtml(email.action.url)}" style="display:inline-block;padding:10px 18px;border-radius:${RADIUS.button}px;background:${LIGHT.accent};color:#ffffff;font-size:14px;line-height:20px;font-weight:600">${inlineHtml(email.action.label)}</a></td></tr></table>`;
+  const button = !email.action ? new Html('') : markup`<table ${T}><tr><td class="zb" bgcolor="${LIGHT.accent}" style="border-radius:${RADIUS.button}px;mso-padding-alt:10px 18px"><a class="zb" href="${hrefHtml(email.action.url)}" style="display:inline-block;padding:10px 18px;border-radius:${RADIUS.button}px;background:${LIGHT.accent};color:#ffffff;font-size:14px;line-height:20px;font-weight:600">${inlineHtml(email.action.label)}</a></td></tr></table>`;
   const content = [
     email.icon
       ? markup`<tr${mark('part', 'heading')}><td><table ${T}><tr><td style="padding-right:8px"><img src="${base.iconBaseUrl}/${badgeFile(email.icon, email.tone)}" width="20" height="20" alt="" style="display:block;border-radius:10px"></td><td class="zm" style="${SMALL}">${email.eyebrow}</td></tr></table></td></tr>`
@@ -404,7 +405,7 @@ export function toHtml(email: Email, options: { annotate?: boolean } = {}): stri
     email.blocks.map((block, i) =>
       guard(block.when, row(i === 0 ? SPACE.firstBlock : SPACE.block, blockHtml(block), mark('block', (block as { ref?: number }).ref ?? i))),
     ),
-    row(SPACE.button, button, mark('part', 'button')),
+    email.action ? row(SPACE.button, button, mark('part', 'button')) : '',
     email.secondary
       ? row(
           14,
@@ -490,7 +491,7 @@ function blockText(block: Block): string {
 export function toText(email: Email): string {
   const base = basePlaceholders(email);
   const head = `${email.eyebrow}\n${lineText(email.title)}${email.subtitle ? lineText(email.subtitle) : ''}`;
-  const links = `${richText(email.action.label)}: ${hrefText(email.action.url)}\n${email.secondary ? `${richText(email.secondary.label)}: ${hrefText(email.secondary.url)}\n` : ''}`;
+  const links = `${email.action ? `${richText(email.action.label)}: ${hrefText(email.action.url)}\n` : ''}${email.secondary ? `${richText(email.secondary.label)}: ${hrefText(email.secondary.url)}\n` : ''}`;
   const footer = [
     lineText(email.reason),
     email.footer === 'operational' ? `Notifications are managed in ArmorCode’s settings: ${base.notificationSettingsUrl}\n` : '',

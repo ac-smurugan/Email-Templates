@@ -20,6 +20,9 @@ main{flex:1;overflow:auto;padding:24px 28px}
 .new code{background:var(--well);padding:0 4px;border-radius:4px;font-size:12px}
 .bar{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
 .seg{display:inline-flex;background:var(--well);border-radius:8px;padding:2px}
+.vseg{margin:0 8px 16px}
+.vseg .seg{width:100%}
+.vseg .seg button{flex:1}
 .seg button{border:0;background:none;color:var(--muted);font:inherit;padding:4px 12px;border-radius:6px;cursor:pointer}
 .seg button[aria-pressed=true]{background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .reset{border:0;background:var(--well);color:var(--fg);font:inherit;padding:4px 14px;border-radius:8px;cursor:pointer}
@@ -32,6 +35,37 @@ h2.name{margin:0;font-size:20px}
 .side{flex:1;min-width:300px;display:flex;flex-direction:column;gap:10px}
 .ed{background:var(--card);border-radius:12px;box-shadow:0 0 0 1px var(--line);padding:14px 16px}
 .ed pre{margin-top:10px}
+.stage{position:relative;flex:none}
+.stage iframe{display:block}
+.ebtn{border:0;background:var(--accent);color:#fff;font:inherit;font-weight:600;padding:4px 16px;border-radius:8px;cursor:pointer}
+.formhost[data-scheme=light]{color-scheme:light;--bg:#ebeef3;--card:#ffffff;--well:#f4f5f6;--fg:#15181e;--muted:#676a71;--line:#ecedef;--accent:#624cf5;--link:#4a35d6}
+.formhost[data-scheme=dark]{color-scheme:dark;--bg:#0a0b0e;--card:#101216;--well:#1c1e22;--fg:#eceef2;--muted:#9ea1a8;--line:#212326;--accent:#7c6bff;--link:#b3a9ff}
+.formhost{color:var(--fg);background:var(--bg);border-radius:12px;box-shadow:0 0 0 1px var(--line);padding:16px}
+.fm-brand{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.fm-brand img{height:28px;width:auto}
+.fm-name{font-weight:600;flex:1}
+.fm-link{border:0;background:none;color:var(--link);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline}
+.fm-box{background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:14px}
+.fm-f{margin-bottom:14px;position:relative}
+.fm-lh{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.fm-l{font-size:13px;font-weight:600;display:block;margin-bottom:4px}
+.fm-lh .fm-l{margin:0}
+.fm-n,.fm-from{color:var(--muted);font-size:12px;margin:6px 0 0}
+.fm-i{width:16px;height:16px;border-radius:50%;border:0;background:var(--muted);color:var(--card);font:700 11px/16px Georgia,serif;padding:0;cursor:pointer}
+.formhost input[type=text],.formhost textarea{width:100%;font:13px/18px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.formhost textarea.fm-code{font:12.5px/1.65 ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+.formhost input:focus,.formhost textarea:focus{outline:2px solid var(--accent);outline-offset:0}
+.fm-pick{position:absolute;left:0;right:0;top:26px;max-height:260px;overflow:auto;background:var(--card);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.35),0 0 0 1px var(--line);z-index:5;padding:4px}
+.fm-pickrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:10px;width:100%;text-align:left;border:0;background:none;color:var(--fg);font:inherit;font-size:12px;padding:7px 10px;border-radius:6px;cursor:pointer}
+.fm-pickrow:hover{background:var(--well)}
+.fm-pickrow code{font-size:12px;overflow-wrap:anywhere}
+.fm-pickrow span{color:var(--muted)}
+.fm-rule{border:0;border-top:1px solid var(--line);margin:16px 0 10px}
+.fm-err{color:#e5484d;font-size:12.5px;margin:0 0 10px}
+.fm-actions{display:flex;gap:8px;margin-top:4px}
+.fm-actions button{border:0;background:var(--well);color:var(--fg);font:inherit;padding:7px 18px;border-radius:8px;cursor:pointer}
+.fm-actions .fm-primary{background:var(--accent);color:#fff;font-weight:600}
+.fm-actions .fm-reset{margin-left:auto;color:var(--muted)}
 .b-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .b-bar button,.b-add,.b-addblock>button,.b-menu button{border:0;background:var(--well);color:var(--fg);font:inherit;font-size:13px;padding:5px 12px;border-radius:6px;cursor:pointer}
 .b-s{color:var(--muted);font-size:12px}
@@ -68,12 +102,12 @@ const WIDTHS={desktop:640,phone:375};
 const STATIC=true;
 const emailSrc=(id,scheme,variant)=>{const v=variant&&variant!=='default'?variant:'';return STATIC?'/email/'+id+'-'+scheme+(v?'-'+v:'')+'.html':'/email/'+id+'?scheme='+scheme+(v?'&variant='+v:'');};
 const pdfSrc=id=>STATIC?'/pdf/'+id+'.html':'/pdf/'+id;
-let data, width=localStorage.width||'desktop', scheme=localStorage.scheme||'light', variant=localStorage.variant||'default', pane=localStorage.pane||'text', ticket=0;
+let data, width=localStorage.width||'desktop', scheme=localStorage.scheme||'light', variant=localStorage.variant||'default', pane=localStorage.pane||'text', version=localStorage.version||'v1', ticket=0;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function load(){data=await (await fetch('/emails.json')).json();nav();show();}
 function nav(){
   const n=document.getElementById('nav');
-  let h='<h1>ArmorCode emails</h1>';
+  let h='<h1>ArmorCode emails</h1><div class="vseg" id="vseg">'+seg('version',[['v0','V0'],['v1','V1']],version)+'</div>';
   for(const g of data.groups){const es=data.emails.filter(e=>e.group===g);if(!es.length)continue;
     h+='<h2>'+esc(g)+'</h2>'+es.map(e=>'<a href="#'+e.id+'">'+esc(e.name)+(e.problems.length?' <span class="bad">●</span>':'')+'</a>').join('');}
   if(data.pdfs.length)h+='<h2>PDF reports</h2>'+data.pdfs.map(p=>'<a href="#pdf:'+p.id+'">'+esc(p.name)+'</a>').join('');
@@ -86,11 +120,14 @@ function show(){
   for(const a of document.querySelectorAll('nav a'))a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+id);
   const m=document.getElementById('main');
   if(id.startsWith('pdf:')){const p=data.pdfs.find(x=>'pdf:'+x.id===id);if(!p)return;
+    document.getElementById('vseg').hidden=true;
     m.innerHTML='<h2 class="name">'+esc(p.name)+'</h2><dl class="meta"><dt>When</dt><dd>'+esc(p.when)+'</dd><dt>Source</dt><dd>'+esc(p.source)+'</dd></dl><div class="views"><iframe title="Report" src="'+pdfSrc(p.id)+'" style="width:820px;height:1100px"></iframe></div>';
     const f=m.querySelector('iframe');f.onload=()=>fit(f);return;}
   const e=data.emails.find(x=>x.id===id);if(!e)return;
+  document.getElementById('vseg').hidden=false;
   // The layout last picked, if this email has it; otherwise its own.
   const shownVariant=e.variants.some(v=>v.id===variant)?variant:'default';
+  const v1=version==='v1';
   const text=(e.variants.find(v=>v.id===shownVariant)||{text:e.text}).text;
   m.innerHTML='<h2 class="name">'+esc(e.name)+' <span class="tag" id="edited" hidden>Edited</span></h2>'
    +'<dl class="meta"><dt>Subject</dt><dd id="subj"><strong>'+esc(e.subject)+'</strong> <span style="color:var(--muted)">· '+e.subject.length+' characters</span></dd>'
@@ -98,9 +135,10 @@ function show(){
    +'<dt>Type</dt><dd><span class="tag">'+e.kind+'</span><span class="tag">'+(e.engine==='velocity'?'Velocity':'Plain substitution')+'</span></dd>'
    +(e.newFields.length?'<dt>New</dt><dd class="new">'+e.newFields.map(f=>'<code>'+esc(f)+'</code>').join(' ')+'</dd>':'')+'</dl>'
    +(e.problems.length?'<div class="problems"><strong>Problems</strong><br>'+e.problems.map(esc).join('<br>')+'</div>':'')
-   +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+(e.variants.length?seg('variant',e.variants.map(v=>[v.id,v.label]),shownVariant):'')+'<button class="reset" id="resetTop" disabled title="Undo your edits to this email">Reset</button></div>'
-   +'<div class="views"><iframe title="Email" src="'+emailSrc(e.id,scheme,shownVariant)+'" style="width:'+WIDTHS[width]+'px;height:700px"></iframe>'
-   +'<div class="side">'+seg('pane',[['text','Plain text'],['edit','Edit']],pane)+'<div class="problems" id="ederr" hidden></div><pre id="txt"'+(pane==='text'?'':' hidden')+'>'+esc(text)+'</pre><div class="ed" id="ed"'+(pane==='edit'?'':' hidden')+'>Loading…</div></div></div>';
+   +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+(e.variants.length?seg('variant',e.variants.map(v=>[v.id,v.label]),shownVariant):'')+'<button class="reset" id="resetTop" disabled title="Undo your edits to this email">Reset</button>'+(version==='v1'?'<button class="ebtn" id="editBtn" type="button" title="Edit this email">Edit</button>':'')+'</div>'
+   +'<div class="views">'+(v1?'<div class="stage" style="width:'+WIDTHS[width]+'px">':'')
+   +'<iframe title="Email" src="'+emailSrc(e.id,scheme,shownVariant)+'" style="width:'+WIDTHS[width]+'px;height:700px"></iframe>'+(v1?'<div class="formhost" id="formhost" hidden></div></div>':'')
+   +'<div class="side">'+(v1?'':seg('pane',[['text','Plain text'],['edit','Edit']],pane))+'<div class="problems" id="ederr" hidden></div><pre id="txt"'+(v1||pane==='text'?'':' hidden')+'>'+esc(text)+'</pre><div class="ed" id="ed"'+(!v1&&pane==='edit'?'':' hidden')+'>Loading…</div></div></div>';
   const f=m.querySelector('iframe');f.onload=()=>fit(f);
   for(const b of m.querySelectorAll('[data-width]'))b.onclick=()=>{width=localStorage.width=b.dataset.width;show()};
   for(const b of m.querySelectorAll('[data-scheme]'))b.onclick=()=>{scheme=localStorage.scheme=b.dataset.scheme;show()};
@@ -120,16 +158,18 @@ async function edit(e,layout,text){
   const f=document.querySelector('#main iframe'),pre=document.getElementById('txt'),subj=document.getElementById('subj'),tag=document.getElementById('edited'),reset=document.getElementById('resetTop');
   const accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
   const subject=s=>'<strong>'+esc(s)+'</strong> <span style="color:var(--muted)">· '+s.length+' characters</span>';
-  reset.onclick=()=>{ed.clearEdits(e.id,layout);show()};
+  reset.onclick=()=>{ed.clearEdits(e.id,layout,version);show()};
   let builder=null;
   const rendered=r=>{
     if(my!==ticket)return;
     err.hidden=true;tag.hidden=!r.edited;reset.disabled=!r.edited;
-    if(pane!=='edit'&&!r.edited){if(f.hasAttribute('srcdoc'))f.removeAttribute('srcdoc');pre.textContent=text;subj.innerHTML=subject(e.subject);return}
+    if(!(version==='v0'&&pane==='edit')&&!r.edited){if(f.hasAttribute('srcdoc'))f.removeAttribute('srcdoc');pre.textContent=text;subj.innerHTML=subject(e.subject);return}
     f.onload=()=>{fit(f);if(builder)ed.connect(f,builder,accent)};
     f.srcdoc=r.html;pre.textContent=r.text;subj.innerHTML=subject(r.subject);
   };
-  builder=ed.mount(box,model,layout,scheme,rendered);
+  if(version==='v1')ed.mountForm(document.getElementById('stage')||document.querySelector('#main .stage'),model,layout,scheme,rendered,version);
+  else builder=ed.mount(box,model,layout,scheme,rendered,version);
 }
+document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('[data-version]');if(!b)return;version=localStorage.version=b.dataset.version;nav();show()});
 addEventListener('hashchange',show);load();
 </script></body></html>

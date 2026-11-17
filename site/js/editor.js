@@ -6,6 +6,7 @@
  * The preview serves this file, and the modules it imports, with their types stripped.
  */
 import { Cond, Vtl } from './placeholders.js';
+import { blocksToText, hrefToText, parseHref, parseRich, serializeRich, textToBlocks,             } from './body.js';
 import { pinScheme, richText, toHtml, toText,                                                } from './layout.js';
 import { fill } from './fill.js';
 
@@ -52,6 +53,8 @@ export async function loadModel(id        )                 {
 }
 
 const storageKey = (id        , layout        ) => `ac-build:${id}:${layout}`;
+/** V0 is the template's own key, so edits made before versions existed still show; other versions have their own. */
+export const scopeOf = (layout        , version = 'v0') => (version === 'v0' ? layout : `${layout}@${version}`);
 const layoutOf = (model       , id        ) => model.layouts.find((l) => l.id === id) ?? model.layouts[0] ;
 
 /** The template as written, as a builder document: each block knows where it came from. */
@@ -61,9 +64,9 @@ function original(model       , layout        )      {
   return doc;
 }
 
-function load(model       , layout        )        {
+function load(model       , layout        , version        )        {
   try {
-    const saved = localStorage.getItem(storageKey(model.id, layout));
+    const saved = localStorage.getItem(storageKey(model.id, scopeOf(layout, version)));
     if (saved) return JSON.parse(saved, revive)         ;
   } catch {
     // Unreadable, or no storage: start from the template.
@@ -71,31 +74,34 @@ function load(model       , layout        )        {
   return { doc: original(model, layout), sample: {} };
 }
 
+/** The document as comparable text: where a block came from doesn't count as a change. */
+const stable = (doc     ) => JSON.stringify(doc, (key, value) => (key === 'from' || key === 'ref' ? undefined : marked(key, value)));
 const isEdited = (model       , layout        , saved       ) =>
-  Object.keys(saved.sample).length > 0 || JSON.stringify(saved.doc, marked) !== JSON.stringify(original(model, layout), marked);
+  Object.keys(saved.sample).length > 0 || stable(saved.doc) !== stable(original(model, layout));
 
-function save(model       , layout        , saved       ) {
+function save(model       , layout        , version        , saved       ) {
   try {
-    if (isEdited(model, layout, saved)) localStorage.setItem(storageKey(model.id, layout), JSON.stringify(saved, marked));
-    else localStorage.removeItem(storageKey(model.id, layout));
+    const key = storageKey(model.id, scopeOf(layout, version));
+    if (isEdited(model, layout, saved)) localStorage.setItem(key, JSON.stringify(saved, marked));
+    else localStorage.removeItem(key);
   } catch {
     // Storage can be off (a private window); changes then last until the page reloads.
   }
 }
 
 /** Whether an email layout has changes saved in this browser. */
-export function hasEdits(id        , layout        )          {
+export function hasEdits(id        , scope        )          {
   try {
-    return localStorage.getItem(storageKey(id, layout)) !== null;
+    return localStorage.getItem(storageKey(id, scope)) !== null;
   } catch {
     return false;
   }
 }
 
 /** Drops an email layout's changes, back to the template as written. */
-export function clearEdits(id        , layout        ) {
+export function clearEdits(id        , layout        , version = 'v0') {
   try {
-    localStorage.removeItem(storageKey(id, layout));
+    localStorage.removeItem(storageKey(id, scopeOf(layout, version)));
   } catch {
     // Nothing stored.
   }
@@ -337,11 +343,11 @@ function render(model       , layout        , saved       , scheme              
 const wording = (block       ) =>
   block.kind === 'text' || block.kind === 'quote' ? asForm(block.text).text.replace(/\s+/g, ' ').trim() : summary(block);
 
-function changesText(model       , layout        , saved       )         {
+function changesText(model       , layout        , version        , saved       )         {
   const before = original(model, layout);
   const after = saved.doc;
   const shown = (rich                  ) => (rich === undefined ? '(none)' : asForm(rich).text);
-  const lines = [`Changes to ${model.id}${layout === 'default' ? '' : ` (${layout} layout)`}:`];
+  const lines = [`Changes to ${model.id}${layout === 'default' ? '' : ` (${layout} layout)`}${version === 'v0' ? '' : ` in ${version.toUpperCase()}`}:`];
   const top                                                 = [
     ['Subject', before.subject, after.subject],
     ['Inbox preview line', before.preview, after.preview],
@@ -415,8 +421,15 @@ function richBox(label        , rich                  , change                  
  * Puts the builder for an email's layout in `container`. `rendered` gets the email rendered with the
  * changes, on every change (they're saved first).
  */
-export function mount(container             , model       , layout        , scheme                  , rendered                       )          {
-  const saved = load(model, layout);
+export function mount(
+  container             ,
+  model       ,
+  layout        ,
+  scheme                  ,
+  rendered                       ,
+  version = 'v0',
+)          {
+  const saved = load(model, layout, version);
   const doc = saved.doc;
   let open                = null;
   let timer                                           ;
@@ -431,7 +444,7 @@ export function mount(container             , model       , layout        , sche
 
   /** Saves, then renders: at once, or after a short pause while typing. */
   const changed = (now = false) => {
-    save(model, layout, saved);
+    save(model, layout, version, saved);
     clearTimeout(timer);
     const run = () => {
       try {
@@ -451,7 +464,7 @@ export function mount(container             , model       , layout        , sche
   };
 
   copyButton.addEventListener('click', async () => {
-    const text = changesText(model, layout, saved);
+    const text = changesText(model, layout, version, saved);
     try {
       await navigator.clipboard.writeText(text);
       status.textContent = isEdited(model, layout, saved) ? 'Copied' : 'No changes yet';
@@ -708,3 +721,226 @@ export function connect(frame                   , builder         , accent      
 }
 
 export { changesText };
+
+// ——— The V1 edit form ———
+// A form on the email itself: Subject, Body as text a developer writes (see body.ts), and a call to
+// action. Save applies it, Cancel drops it, Reset goes back to the template. The title, eyebrow
+// and footer stay as the template has them.
+
+/** Placeholders that fill the brand row and footer, not the email's own text. */
+const NOT_FOR_TEXT = new Set(['amcLogoUrl', 'iconBaseUrl', 'notificationSettingsUrl']);
+
+                                      
+
+                       
+                                     
+               
+ 
+
+/**
+ * Puts the Edit button and form in `stage` (which holds the preview frame, an `.ebtn` button and a
+ * `.formhost`). `rendered` gets the email rendered with the saved changes, on mount and on every Save.
+ */
+export function mountForm(
+  stage             ,
+  model       ,
+  layout        ,
+  scheme                  ,
+  rendered                       ,
+  version = 'v1',
+)       {
+  const saved = load(model, layout, version);
+  const engine = (layoutOf(model, layout).email.engine ?? 'velocity')          ;
+  const frame = stage.querySelector('iframe')                     ;
+  const host = stage.querySelector('.formhost')               ;
+  const editButton = (stage.querySelector('.ebtn') ?? document.getElementById('editBtn'))                     ;
+  host.dataset.scheme = scheme;
+  const show = () => rendered(render(model, layout, saved, scheme));
+
+  const close = () => {
+    host.hidden = true;
+    host.replaceChildren();
+    frame.hidden = false;
+    editButton.hidden = false;
+  };
+
+  const open = () => {
+    const doc = saved.doc;
+    const link = doc.action ?? doc.secondary;
+    const initial = {
+      subject: serializeRich(doc.subject),
+      body: blocksToText(doc.blocks),
+      cta: (doc.action ? 'button' : doc.secondary ? 'link' : 'none')       ,
+      label: serializeRich(link?.label),
+      url: hrefToText(link?.url),
+    };
+    const originals = [...doc.blocks];
+
+    const form = el('div', { class: 'fm' });
+
+    // Brand row, with the branding link.
+    const brand = el('div', { class: 'fm-brand' });
+    const logo = el('img', { alt: '', height: '28' });
+    logo.src = String(saved.sample.amcLogoUrl ?? model.sample.amcLogoUrl ?? '');
+    const customize = el('button', { type: 'button', class: 'fm-link' }, '⚙ Customize Branding');
+    brand.append(logo, el('span', { class: 'fm-name' }, 'ArmorCode'), customize);
+    const branding = el('div', { class: 'fm-box' });
+    branding.hidden = true;
+    const brandingInput = el('input', { type: 'text', 'aria-label': 'Logo URL' });
+    brandingInput.value = String(saved.sample.amcLogoUrl ?? model.sample.amcLogoUrl ?? '');
+    brandingInput.addEventListener('input', () => {
+      logo.src = brandingInput.value;
+      if (brandingInput.value === String(model.sample.amcLogoUrl ?? '')) delete saved.sample.amcLogoUrl;
+      else saved.sample.amcLogoUrl = brandingInput.value;
+      save(model, layout, version, saved);
+      show();
+    });
+    branding.append(el('span', { class: 'fm-l' }, 'Logo URL'), brandingInput, el('p', { class: 'fm-n' }, 'The image shown beside ArmorCode at the top of every email.'));
+    customize.addEventListener('click', () => (branding.hidden = !branding.hidden));
+
+    // Fields, each with an (i) that picks a variable.
+    const picker = el('div', { class: 'fm-pick' });
+    picker.hidden = true;
+    let target                                                = null;
+    for (const [name, field] of Object.entries(model.fields)) {
+      if (NOT_FOR_TEXT.has(name)) continue;
+      const row = el('button', { type: 'button', class: 'fm-pickrow' });
+      row.append(el('code', {}, `\${${name}}`), el('span', {}, field.about));
+      row.addEventListener('click', () => {
+        if (!target) return;
+        const at = target.selectionStart ?? target.value.length;
+        const end = target.selectionEnd ?? at;
+        const text = `\${${name}}`;
+        target.value = target.value.slice(0, at) + text + target.value.slice(end);
+        target.focus();
+        target.setSelectionRange(at + text.length, at + text.length);
+        picker.hidden = true;
+      });
+      picker.append(row);
+    }
+    const field = (label        , box                                        , required = true, pick = false) => {
+      const wrap = el('div', { class: 'fm-f' });
+      const head = el('div', { class: 'fm-lh' });
+      head.append(el('span', { class: 'fm-l' }, `${required ? '* ' : ''}${label}`));
+      if (pick) {
+        const info = el('button', { type: 'button', class: 'fm-i', title: 'Insert a variable', 'aria-label': `Insert a variable into ${label}` }, 'i');
+        info.addEventListener('click', (e) => {
+          e.stopPropagation();
+          target = box;
+          wrap.append(picker);
+          picker.hidden = !picker.hidden;
+        });
+        head.append(info);
+      }
+      wrap.append(head, box);
+      return wrap;
+    };
+    const subject = el('input', { type: 'text' });
+    subject.value = initial.subject;
+    const body = el('textarea', { class: 'fm-code', rows: String(Math.min(22, Math.max(8, initial.body.split('\n').length + 2))), spellcheck: 'false' });
+    body.value = initial.body;
+    const label = el('input', { type: 'text' });
+    label.value = initial.label;
+    const url = el('input', { type: 'text' });
+    url.value = initial.url;
+
+    // Call to action: none, a button, or a quiet link.
+    let cta      = initial.cta;
+    const ctaWrap = el('div', { class: 'fm-f' });
+    ctaWrap.append(el('span', { class: 'fm-l' }, 'Call to action'));
+    const ctaSeg = el('span', { class: 'seg' });
+    const labelField = field('Button text', label, true);
+    const urlField = field('URL', url, true, true);
+    const showCta = () => {
+      for (const b of ctaSeg.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.cta === cta));
+      labelField.hidden = urlField.hidden = cta === 'none';
+      labelField.querySelector('.fm-l') .textContent = `* ${cta === 'link' ? 'Link text' : 'Button text'}`;
+    };
+    for (const [value, name] of [['none', 'None'], ['button', 'Button'], ['link', 'Link']]         ) {
+      const b = el('button', { type: 'button', 'data-cta': value }, name);
+      b.addEventListener('click', () => ((cta = value), showCta()));
+      ctaSeg.append(b);
+    }
+    ctaWrap.append(ctaSeg);
+
+    // Save, Cancel, Reset.
+    const error = el('p', { class: 'fm-err' });
+    error.hidden = true;
+    const actions = el('div', { class: 'fm-actions' });
+    const saveButton = el('button', { type: 'button', class: 'fm-primary' }, 'Save');
+    const cancelButton = el('button', { type: 'button' }, 'Cancel');
+    const resetButton = el('button', { type: 'button', class: 'fm-reset' }, 'Reset');
+    actions.append(saveButton, cancelButton, resetButton);
+
+    const fail = (message        ) => {
+      error.textContent = message;
+      error.hidden = false;
+    };
+    saveButton.addEventListener('click', () => {
+      if (!subject.value.trim() || !body.value.trim()) return fail('Subject and Body are required.');
+      if (cta !== 'none' && (!label.value.trim() || !url.value.trim())) return fail(`${cta === 'link' ? 'Link text' : 'Button text'} and URL are required.`);
+      try {
+        // Only what changed is rebuilt, so the rest of the email stays exactly as the template has it.
+        if (subject.value !== initial.subject) doc.subject = parseRich(subject.value, engine);
+        if (body.value !== initial.body) doc.blocks = textToBlocks(body.value, originals, engine, copy)                ;
+        if (cta !== initial.cta || label.value !== initial.label || url.value !== initial.url) {
+          if (cta === 'none') {
+            delete doc.action;
+            delete doc.secondary;
+          } else {
+            const next = { label: parseRich(label.value, engine), url: parseHref(url.value, engine) };
+            if (cta === 'button') {
+              doc.action = next;
+              if (initial.cta === 'link') delete doc.secondary;
+            } else {
+              doc.secondary = next;
+              delete doc.action;
+            }
+          }
+        }
+        render(model, layout, saved, scheme);
+      } catch (problem) {
+        return fail(`Can’t save this yet: ${(problem         ).message}`);
+      }
+      save(model, layout, version, saved);
+      close();
+      show();
+    });
+    cancelButton.addEventListener('click', close);
+    resetButton.addEventListener('click', () => {
+      clearEdits(model.id, layout, version);
+      const fresh = load(model, layout, version);
+      saved.doc = fresh.doc;
+      saved.sample = fresh.sample;
+      show();
+      open();
+    });
+
+    form.append(
+      brand,
+      branding,
+      field('Subject', subject, true, true),
+      field('Body', body, true, true),
+      ctaWrap,
+      labelField,
+      urlField,
+      el('hr', { class: 'fm-rule' }),
+      el('p', { class: 'fm-from' }, 'From ArmorCode'),
+      error,
+      actions,
+    );
+    showCta();
+    host.replaceChildren(form);
+    host.hidden = false;
+    frame.hidden = true;
+    editButton.hidden = true;
+    document.addEventListener('click', (e) => {
+      if (!(e.target           ).closest('.fm-pick')) picker.hidden = true;
+    });
+    subject.focus();
+  };
+
+  editButton.addEventListener('click', open);
+  show();
+  return { open };
+}
