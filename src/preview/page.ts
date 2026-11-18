@@ -4,6 +4,12 @@ import { DARK, LIGHT, RATING_COLORS } from '../tokens.ts';
  * The preview page: a list of emails, and the picked one in a frame beside its plain text. The
  * static copy (for Cloudflare) has a file per scheme instead of a query string, and `.html` pages.
  */
+/**
+ * Whether the V0 / V1 switch shows. V0 (the template with the block builder) is hidden: the preview is
+ * V1 only. Its code is all still here; set this to true to bring the switch, and V0, back.
+ */
+const SHOW_VERSIONS = false;
+
 export const page = (isStatic: boolean) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>ArmorCode emails</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
@@ -43,6 +49,7 @@ h2.name{margin:0;font-size:20px}
 .ed pre{margin-top:10px}
 .stage{position:relative;flex:none}
 .stage iframe{display:block}
+.reset[aria-pressed=true]{background:var(--accent);color:#fff}
 .ebtn{border:0;background:var(--accent);color:#fff;font:inherit;font-weight:600;padding:4px 16px;border-radius:8px;cursor:pointer}
 .formhost[data-scheme=light]{color-scheme:light;--bg:${LIGHT.canvas};--card:${LIGHT.card};--well:${LIGHT.well};--fg:${LIGHT.fg};--muted:${LIGHT.muted};--line:${LIGHT.line};--accent:${LIGHT.accent};--link:${LIGHT.link}}
 .formhost[data-scheme=dark]{color-scheme:dark;--bg:${DARK.canvas};--card:${DARK.card};--well:${DARK.well};--fg:${DARK.fg};--muted:${DARK.muted};--line:${DARK.line};--accent:${DARK.accent};--link:${DARK.link}}
@@ -106,14 +113,15 @@ h2.name{margin:0;font-size:20px}
 <script>
 const WIDTHS={desktop:640,phone:375};
 const STATIC=${isStatic};
+const VERSIONS=${SHOW_VERSIONS};
 const emailSrc=(id,scheme,variant)=>{const v=variant&&variant!=='default'?variant:'';return STATIC?'/email/'+id+'-'+scheme+(v?'-'+v:'')+'.html':'/email/'+id+'?scheme='+scheme+(v?'&variant='+v:'');};
 const pdfSrc=id=>STATIC?'/pdf/'+id+'.html':'/pdf/'+id;
-let data, width=localStorage.width||'desktop', scheme=localStorage.scheme||'light', variant=localStorage.variant||'default', pane=localStorage.pane||'text', version=localStorage.version||'v1', ticket=0;
+let data, width=localStorage.width||'desktop', scheme=localStorage.scheme||'light', variant=localStorage.variant||'default', version=VERSIONS?(localStorage.version||'v1'):'v1', sampleView=localStorage.preview==='1', ticket=0;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 async function load(){data=await (await fetch('/emails.json')).json();nav();show();}
 function nav(){
   const n=document.getElementById('nav');
-  let h='<h1>ArmorCode emails</h1><div class="vseg" id="vseg">'+seg('version',[['v0','V0'],['v1','V1']],version)+'</div>';
+  let h='<h1>ArmorCode emails</h1><div class="vseg" id="vseg"'+(VERSIONS?'':' hidden')+'>'+seg('version',[['v0','V0'],['v1','V1']],version)+'</div>';
   for(const g of data.groups){const es=data.emails.filter(e=>e.group===g);if(!es.length)continue;
     h+='<h2>'+esc(g)+'</h2>'+es.map(e=>'<a href="#'+e.id+'">'+esc(e.name)+(e.problems.length?' <span class="bad">●</span>':'')+'</a>').join('');}
   if(data.pdfs.length)h+='<h2>PDF reports</h2>'+data.pdfs.map(p=>'<a href="#pdf:'+p.id+'">'+esc(p.name)+'</a>').join('');
@@ -130,38 +138,37 @@ function show(){
     m.innerHTML='<h2 class="name">'+esc(p.name)+'</h2><dl class="meta"><dt>When</dt><dd>'+esc(p.when)+'</dd><dt>Source</dt><dd>'+esc(p.source)+'</dd></dl><div class="views"><iframe title="Report" src="'+pdfSrc(p.id)+'" style="width:820px;height:1100px"></iframe></div>';
     const f=m.querySelector('iframe');f.onload=()=>fit(f);return;}
   const e=data.emails.find(x=>x.id===id);if(!e)return;
-  document.getElementById('vseg').hidden=false;
+  document.getElementById('vseg').hidden=!VERSIONS;
   // The layout last picked, if this email has it; otherwise its own.
   const shownVariant=e.variants.some(v=>v.id===variant)?variant:'default';
   const v1=version==='v1';
-  const text=(e.variants.find(v=>v.id===shownVariant)||{text:e.text}).text;
   m.innerHTML='<h2 class="name">'+esc(e.name)+' <span class="tag" id="edited" hidden>Edited</span></h2>'
    +'<dl class="meta"><dt>Subject</dt><dd id="subj"><strong>'+esc(e.subject)+'</strong> <span style="color:var(--muted)">· '+e.subject.length+' characters</span></dd>'
    +'<dt>Who</dt><dd>'+esc(e.who)+'</dd><dt>When</dt><dd>'+esc(e.when)+'</dd><dt>Source</dt><dd>'+esc(e.source)+'</dd>'
    +'<dt>Type</dt><dd><span class="tag">'+e.kind+'</span><span class="tag">'+(e.engine==='velocity'?'Velocity':'Plain substitution')+'</span></dd>'
    +(e.newFields.length?'<dt>New</dt><dd class="new">'+e.newFields.map(f=>'<code>'+esc(f)+'</code>').join(' ')+'</dd>':'')+'</dl>'
    +(e.problems.length?'<div class="problems"><strong>Problems</strong><br>'+e.problems.map(esc).join('<br>')+'</div>':'')
-   +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+(e.variants.length?seg('variant',e.variants.map(v=>[v.id,v.label]),shownVariant):'')+'<button class="reset" id="resetTop" disabled title="Undo your edits to this email">Reset</button>'+(version==='v1'?'<button class="ebtn" id="editBtn" type="button" title="Edit this email">Edit</button>':'')+'</div>'
+   +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+(e.variants.length?seg('variant',e.variants.map(v=>[v.id,v.label]),shownVariant):'')+'<button class="reset" id="resetTop" disabled title="Undo your edits to this email">Reset</button>'+(version==='v1'?'<button class="reset" id="previewBtn" type="button" aria-pressed="'+sampleView+'" title="Show the email with sample data">Preview</button><button class="ebtn" id="editBtn" type="button" title="Edit this email">Edit</button>':'')+'</div>'
+   +'<div class="problems" id="ederr" hidden></div>'
    +'<div class="views">'+(v1?'<div class="stage" style="width:'+WIDTHS[width]+'px">':'')
-   +'<iframe title="Email" src="'+emailSrc(e.id,scheme,shownVariant)+'" style="width:'+WIDTHS[width]+'px;height:700px"></iframe>'+(v1?'<div class="formhost" id="formhost" hidden></div></div>':'')
-   +'<div class="side">'+(v1?'':seg('pane',[['text','Plain text'],['edit','Edit']],pane))+'<div class="problems" id="ederr" hidden></div><pre id="txt"'+(v1||pane==='text'?'':' hidden')+'>'+esc(text)+'</pre><div class="ed" id="ed"'+(!v1&&pane==='edit'?'':' hidden')+'>Loading…</div></div></div>';
+   +'<iframe title="Email"'+(v1?'':' src="'+emailSrc(e.id,scheme,shownVariant)+'"')+' style="width:'+WIDTHS[width]+'px;height:700px"></iframe>'+(v1?'<div class="formhost" id="formhost" hidden></div></div>':'')
+   +(v1?'':'<div class="side"><div class="ed" id="ed">Loading…</div></div>')+'</div>';
   const f=m.querySelector('iframe');f.onload=()=>fit(f);
   for(const b of m.querySelectorAll('[data-width]'))b.onclick=()=>{width=localStorage.width=b.dataset.width;show()};
   for(const b of m.querySelectorAll('[data-scheme]'))b.onclick=()=>{scheme=localStorage.scheme=b.dataset.scheme;show()};
   for(const b of m.querySelectorAll('[data-variant]'))b.onclick=()=>{variant=localStorage.variant=b.dataset.variant;show()};
-  for(const b of m.querySelectorAll('[data-pane]'))b.onclick=()=>{pane=localStorage.pane=b.dataset.pane;show()};
-  edit(e,shownVariant,text);
+  edit(e,shownVariant);
 }
 // The Edit tab: a builder for the email (js/editor.js). In it, and whenever the email has
 // changes, the frame and the plain text are rendered in the browser, so this works on the static
 // site; clicking a part of the email selects it in the builder.
-async function edit(e,layout,text){
+async function edit(e,layout){
   const my=++ticket,box=document.getElementById('ed'),err=document.getElementById('ederr');
   let ed,model;
   try{ed=await import('/js/editor.js');model=await ed.loadModel(e.id)}
   catch(x){if(my===ticket){box.textContent='The builder didn’t load: '+x.message}return}
   if(my!==ticket)return;
-  const f=document.querySelector('#main iframe'),pre=document.getElementById('txt'),subj=document.getElementById('subj'),tag=document.getElementById('edited'),reset=document.getElementById('resetTop');
+  const f=document.querySelector('#main iframe'),subj=document.getElementById('subj'),tag=document.getElementById('edited'),reset=document.getElementById('resetTop');
   const accent=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();
   const subject=s=>'<strong>'+esc(s)+'</strong> <span style="color:var(--muted)">· '+s.length+' characters</span>';
   reset.onclick=()=>{ed.clearEdits(e.id,layout,version);show()};
@@ -169,11 +176,15 @@ async function edit(e,layout,text){
   const rendered=r=>{
     if(my!==ticket)return;
     err.hidden=true;tag.hidden=!r.edited;reset.disabled=!r.edited;
-    if(!(version==='v0'&&pane==='edit')&&!r.edited){if(f.hasAttribute('srcdoc'))f.removeAttribute('srcdoc');pre.textContent=text;subj.innerHTML=subject(e.subject);return}
     f.onload=()=>{fit(f);if(builder)ed.connect(f,builder,accent)};
-    f.srcdoc=r.html;pre.textContent=r.text;subj.innerHTML=subject(r.subject);
+    f.srcdoc=r.html;subj.innerHTML=subject(r.subject);
   };
-  if(version==='v1')ed.mountForm(document.getElementById('stage')||document.querySelector('#main .stage'),model,layout,scheme,rendered,version);
+  if(version==='v1'){
+    const button=document.getElementById('previewBtn');
+    const sync=()=>button.setAttribute('aria-pressed',String(sampleView));
+    const form=ed.mountForm(document.querySelector('#main .stage'),model,layout,scheme,rendered,version,sampleView?'sample':'template',v=>{sampleView=v==='sample';localStorage.preview=sampleView?'1':'0';sync()});
+    button.onclick=()=>{sampleView=!sampleView;localStorage.preview=sampleView?'1':'0';sync();form.setView(sampleView?'sample':'template')};
+  }
   else builder=ed.mount(box,model,layout,scheme,rendered,version);
 }
 document.getElementById('nav').addEventListener('click',e=>{const b=e.target.closest('[data-version]');if(!b)return;version=localStorage.version=b.dataset.version;nav();show()});

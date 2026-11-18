@@ -325,10 +325,45 @@ export interface Rendered {
   edited: boolean;
 }
 
-function render(model: Model, layout: string, saved: Saved, scheme: 'light' | 'dark'): Rendered {
+/** Placeholders that fill the brand row and footer, not the email's own text. */
+const NOT_FOR_TEXT = new Set(['amcLogoUrl', 'iconBaseUrl', 'notificationSettingsUrl']);
+
+/**
+ * The sample with every value replaced by its own placeholder (`${findings.total.count}`), so the
+ * email shows what a developer writes. A list keeps one item, named for the loop that repeats it
+ * (`${finding.id}`). The logo, badges and an image's source keep their real values, so nothing breaks.
+ */
+function placeholderSample(doc: Doc, base: Record<string, unknown>): Record<string, unknown> {
+  const loops = new Map<string, string>();
+  const keep = new Set(NOT_FOR_TEXT);
+  const scan = (value: unknown) => {
+    if (Array.isArray(value)) value.forEach(scan);
+    else if (value && typeof value === 'object' && !(value instanceof Vtl) && !(value instanceof Cond)) {
+      const each = (value as { each?: { list?: string; as?: string } }).each;
+      if (each?.list && each.as) loops.set(each.list, each.as);
+      if ((value as { kind?: string }).kind === 'image') namesIn((value as { src?: unknown }).src).forEach((n) => keep.add(n));
+      Object.values(value).forEach(scan);
+    }
+  };
+  scan(doc);
+  const walk = (value: unknown, path: string): unknown => {
+    if (Array.isArray(value)) return value.length ? [walk(value[0], loops.get(path) ?? 'item')] : [];
+    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, walk(v, `${path}.${k}`)]));
+    return value === undefined || value === null ? value : `\${${path}}`;
+  };
+  const out = { ...base };
+  for (const [key, value] of Object.entries(base)) if (!keep.has(key)) out[key] = walk(value, key);
+  return out;
+}
+
+/** What fills the placeholders: the sample values, or (the template view) their own names. */
+export type View = 'template' | 'sample';
+
+function render(model: Model, layout: string, saved: Saved, scheme: 'light' | 'dark', view: View = 'sample'): Rendered {
   const blocks = saved.doc.blocks.map((b, i) => ({ ...b, ref: i })).filter((b) => !b.hidden);
   const email = { ...saved.doc, blocks } as Email;
-  const sample = withSample(model, saved.sample);
+  const values = withSample(model, saved.sample);
+  const sample = view === 'template' ? placeholderSample(saved.doc, values) : values;
   return {
     subject: fill(richText(email.subject), sample).output,
     html: pinScheme(fill(toHtml(email, { annotate: true }), sample).output, scheme).replace('<head>', '<head><base target="_blank">'),
@@ -727,14 +762,13 @@ export { changesText };
 // action. Save applies it, Cancel drops it, Reset goes back to the template. The title, eyebrow
 // and footer stay as the template has them.
 
-/** Placeholders that fill the brand row and footer, not the email's own text. */
-const NOT_FOR_TEXT = new Set(['amcLogoUrl', 'iconBaseUrl', 'notificationSettingsUrl']);
-
 type Cta = 'none' | 'button' | 'link';
 
 export interface Form {
   /** Opens the form on the email. */
   open(): void;
+  /** Shows the email with its placeholders (`template`) or with sample values (`sample`). */
+  setView(view: View): void;
 }
 
 /**
@@ -748,16 +782,21 @@ export function mountForm(
   scheme: 'light' | 'dark',
   rendered: (r: Rendered) => void,
   version = 'v1',
+  initialView: View = 'template',
+  viewChanged: (view: View) => void = () => {},
 ): Form {
   const saved = load(model, layout, version);
+  let view: View = initialView;
   const engine = (layoutOf(model, layout).email.engine ?? 'velocity') as Engine;
   const frame = stage.querySelector('iframe') as HTMLIFrameElement;
   const host = stage.querySelector('.formhost') as HTMLElement;
   const editButton = (stage.querySelector('.ebtn') ?? document.getElementById('editBtn')) as HTMLButtonElement;
   host.dataset.scheme = scheme;
-  const show = () => rendered(render(model, layout, saved, scheme));
+  const show = () => rendered(render(model, layout, saved, scheme, view));
+  const previewButton = document.getElementById('previewBtn');
 
   const close = () => {
+    if (previewButton) previewButton.hidden = false;
     host.hidden = true;
     host.replaceChildren();
     frame.hidden = false;
@@ -904,6 +943,9 @@ export function mountForm(
       }
       save(model, layout, version, saved);
       close();
+      // After a Save the email shows its template again, with the new wording.
+      view = 'template';
+      viewChanged(view);
       show();
     });
     cancelButton.addEventListener('click', close);
@@ -934,6 +976,7 @@ export function mountForm(
     host.hidden = false;
     frame.hidden = true;
     editButton.hidden = true;
+    if (previewButton) previewButton.hidden = true;
     document.addEventListener('click', (e) => {
       if (!(e.target as Element).closest('.fm-pick')) picker.hidden = true;
     });
@@ -942,5 +985,11 @@ export function mountForm(
 
   editButton.addEventListener('click', open);
   show();
-  return { open };
+  return {
+    open,
+    setView(next) {
+      view = next;
+      show();
+    },
+  };
 }

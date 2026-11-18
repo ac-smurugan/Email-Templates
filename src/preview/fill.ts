@@ -522,6 +522,9 @@ class Renderer {
         if (op === '!=') return !equal(left, right);
         if (left == null || right == null) return op === '+' || op === '-' || op === '*' || op === '/' || op === '%' ? null : false;
         if (op === '+' && (typeof left === 'string' || typeof right === 'string')) return show(left) + show(right);
+        // Velocity can't compare a text to a number, so the comparison is false (the template view
+        // fills a count with its own name, `${failedCount}`, and gets here).
+        if ((op === '>' || op === '<' || op === '>=' || op === '<=') && [left, right].some((x) => Number.isNaN(Number(x)))) return false;
         const [a, b] = [num(left), num(right)];
         switch (op) {
           case '>':
