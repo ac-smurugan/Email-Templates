@@ -6,7 +6,7 @@
  * The preview serves this file, and the modules it imports, with their types stripped.
  */
 import { Cond, Vtl } from '../placeholders.ts';
-import { blocksToText, hrefToText, parseHref, parseRich, serializeRich, textToBlocks, type Engine } from './body.ts';
+import { blocksToMarkdown, emailToMarkdown, hrefToText, markdownToBlocks, parseHref, parseRich, serializeRich, vtlText, type Engine } from './body.ts';
 import { pinScheme, richText, toHtml, toText, type Block, type Email, type Inline, type Rich } from '../layout.ts';
 import { fill } from './fill.ts';
 
@@ -769,6 +769,8 @@ export interface Form {
   open(): void;
   /** Shows the email with its placeholders (`template`) or with sample values (`sample`). */
   setView(view: View): void;
+  /** The email as a file in a format, as it is now (saved changes included). */
+  exportFile(kind: ExportKind): ExportFile;
 }
 
 /**
@@ -794,9 +796,11 @@ export function mountForm(
   host.dataset.scheme = scheme;
   const show = () => rendered(render(model, layout, saved, scheme, view));
   const previewButton = document.getElementById('previewBtn');
+  const exportWrap = document.querySelector('.expwrap') as HTMLElement | null;
 
   const close = () => {
     if (previewButton) previewButton.hidden = false;
+    if (exportWrap) exportWrap.hidden = false;
     host.hidden = true;
     host.replaceChildren();
     frame.hidden = false;
@@ -808,7 +812,7 @@ export function mountForm(
     const link = doc.action ?? doc.secondary;
     const initial = {
       subject: serializeRich(doc.subject),
-      body: blocksToText(doc.blocks),
+      body: blocksToMarkdown(doc.blocks),
       cta: (doc.action ? 'button' : doc.secondary ? 'link' : 'none') as Cta,
       label: serializeRich(link?.label),
       url: hrefToText(link?.url),
@@ -921,7 +925,7 @@ export function mountForm(
       try {
         // Only what changed is rebuilt, so the rest of the email stays exactly as the template has it.
         if (subject.value !== initial.subject) doc.subject = parseRich(subject.value, engine);
-        if (body.value !== initial.body) doc.blocks = textToBlocks(body.value, originals, engine, copy) as BuiltBlock[];
+        if (body.value !== initial.body) doc.blocks = markdownToBlocks(body.value, originals, engine, copy) as BuiltBlock[];
         if (cta !== initial.cta || label.value !== initial.label || url.value !== initial.url) {
           if (cta === 'none') {
             delete doc.action;
@@ -963,6 +967,7 @@ export function mountForm(
       branding,
       field('Subject', subject, true, true),
       field('Body', body, true, true),
+      el('p', { class: 'fm-n fm-md' }, 'Markdown: **bold**, [link](url), - list, > quote, # heading, <small>note</small>, and tables for details and stats. <!-- if $name -->…<!-- /if --> shows text only when a value is there.'),
       ctaWrap,
       labelField,
       urlField,
@@ -977,11 +982,59 @@ export function mountForm(
     frame.hidden = true;
     editButton.hidden = true;
     if (previewButton) previewButton.hidden = true;
+    if (exportWrap) exportWrap.hidden = true;
     document.addEventListener('click', (e) => {
       if (!(e.target as Element).closest('.fm-pick')) picker.hidden = true;
     });
     subject.focus();
   };
+
+  const exportFile = (kind: ExportKind) => buildExport(model, layout, saved, kind, view);
+
+  // The Export menu: a format per row, to download or copy.
+  const exportButton = document.getElementById('exportBtn');
+  const exportMenu = document.getElementById('expMenu');
+  if (exportButton && exportMenu) {
+    const notes: Record<ExportKind, () => string> = {
+      html: () => (view === 'template' ? 'The template, with placeholders' : 'With the sample data'),
+      markdown: () => 'The whole email, with placeholders',
+      json: () => 'The email as structured content',
+    };
+    const draw = () => {
+      exportMenu.replaceChildren();
+      for (const [kind, name] of [['html', 'HTML'], ['markdown', 'Markdown'], ['json', 'JSON']] as const) {
+        const row = el('div', { class: 'exp-row' });
+        const label = el('span', { class: 'exp-l' });
+        label.append(el('strong', {}, name), el('span', { class: 'exp-n' }, notes[kind]()));
+        const status = el('span', { class: 'exp-s' });
+        const download = el('button', { type: 'button' }, 'Download');
+        const copy = el('button', { type: 'button' }, 'Copy');
+        download.addEventListener('click', () => {
+          const file = exportFile(kind);
+          downloadFile(file);
+          status.textContent = `Saved ${file.name}`;
+        });
+        copy.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(exportFile(kind).text);
+            status.textContent = 'Copied';
+          } catch {
+            status.textContent = 'Couldn’t copy';
+          }
+        });
+        row.append(label, download, copy, status);
+        exportMenu.append(row);
+      }
+    };
+    exportButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (exportMenu.hidden) draw();
+      exportMenu.hidden = !exportMenu.hidden;
+    });
+    document.addEventListener('click', (e) => {
+      if (!(e.target as Element).closest('.expwrap')) exportMenu.hidden = true;
+    });
+  }
 
   editButton.addEventListener('click', open);
   show();
@@ -991,5 +1044,52 @@ export function mountForm(
       view = next;
       show();
     },
+    exportFile,
   };
+}
+
+// ——— Export ———
+
+export type ExportKind = 'html' | 'markdown' | 'json';
+export interface ExportFile {
+  name: string;
+  type: string;
+  text: string;
+}
+
+/** Builder-internal keys, and Velocity code and conditions as text, for the JSON. */
+const forJson = (key: string, value: unknown) => {
+  if (key === 'from' || key === 'ref' || key === 'hidden') return undefined;
+  if (value instanceof Vtl) return vtlText(value);
+  if (value instanceof Cond) return { if: value.expr };
+  return value;
+};
+
+/**
+ * The email, as saved, in a format. HTML is the real email (no preview markers): the template with
+ * its placeholders while the template view is on, filled with the sample data in Preview. Markdown
+ * and JSON are always the template, with placeholders.
+ */
+function buildExport(model: Model, layout: string, saved: Saved, kind: ExportKind, view: View): ExportFile {
+  const base = `${model.id}${layout === 'default' ? '' : `.${layout}`}`;
+  const email = { ...saved.doc, blocks: saved.doc.blocks.filter((b) => !b.hidden) } as Email;
+  if (kind === 'html') {
+    const html = toHtml(email);
+    const sample = view === 'sample';
+    return { name: `${base}${sample ? '-sample' : ''}.html`, type: 'text/html', text: sample ? fill(html, withSample(model, saved.sample)).output : html };
+  }
+  if (kind === 'markdown') return { name: `${base}.md`, type: 'text/markdown', text: emailToMarkdown(email) };
+  const engine = layoutOf(model, layout).email.engine ?? 'velocity';
+  const json = { id: model.id, layout, engine, email, sample: withSample(model, saved.sample) };
+  return { name: `${base}.json`, type: 'application/json', text: `${JSON.stringify(json, forJson, 2)}\n` };
+}
+
+/** Saves a file from the browser. */
+function downloadFile(file: ExportFile) {
+  const url = URL.createObjectURL(new Blob([file.text], { type: `${file.type};charset=utf-8` }));
+  const link = el('a', { href: url, download: file.name });
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

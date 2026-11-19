@@ -49,6 +49,17 @@ h2.name{margin:0;font-size:20px}
 .ed pre{margin-top:10px}
 .stage{position:relative;flex:none}
 .stage iframe{display:block}
+.expwrap{position:relative;display:inline-block}
+.expmenu{position:absolute;top:calc(100% + 6px);left:0;z-index:6;width:420px;background:var(--card);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.4),0 0 0 1px var(--line);padding:6px}
+.exp-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px 8px;align-items:center;padding:8px 10px;border-radius:8px}
+.exp-row:hover{background:var(--well)}
+.exp-l{display:flex;flex-direction:column}
+.exp-n{color:var(--muted);font-size:12px}
+.exp-row button{border:0;background:var(--well);color:var(--fg);font:inherit;font-size:13px;padding:4px 12px;border-radius:6px;cursor:pointer}
+.exp-row button:hover{background:var(--accent);color:#fff}
+.exp-s{grid-column:1 / -1;color:var(--muted);font-size:12px}
+.exp-s:empty{display:none}
+.fm-md code,.fm-n code{font-size:11px}
 .reset[aria-pressed=true]{background:var(--accent);color:#fff}
 .ebtn{border:0;background:var(--accent);color:#fff;font:inherit;font-weight:600;padding:4px 16px;border-radius:8px;cursor:pointer}
 .formhost[data-scheme=light]{color-scheme:light;--bg:${LIGHT.canvas};--card:${LIGHT.card};--well:${LIGHT.well};--fg:${LIGHT.fg};--muted:${LIGHT.muted};--line:${LIGHT.line};--accent:${LIGHT.accent};--link:${LIGHT.link}}
@@ -148,7 +159,7 @@ function show(){
    +'<dt>Type</dt><dd><span class="tag">'+e.kind+'</span><span class="tag">'+(e.engine==='velocity'?'Velocity':'Plain substitution')+'</span></dd>'
    +(e.newFields.length?'<dt>New</dt><dd class="new">'+e.newFields.map(f=>'<code>'+esc(f)+'</code>').join(' ')+'</dd>':'')+'</dl>'
    +(e.problems.length?'<div class="problems"><strong>Problems</strong><br>'+e.problems.map(esc).join('<br>')+'</div>':'')
-   +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+(e.variants.length?seg('variant',e.variants.map(v=>[v.id,v.label]),shownVariant):'')+'<button class="reset" id="resetTop" disabled title="Undo your edits to this email">Reset</button>'+(version==='v1'?'<button class="reset" id="previewBtn" type="button" aria-pressed="'+sampleView+'" title="Show the email with sample data">Preview</button><button class="ebtn" id="editBtn" type="button" title="Edit this email">Edit</button>':'')+'</div>'
+   +'<div class="bar">'+seg('width',[['desktop','Desktop'],['phone','Phone']],width)+seg('scheme',[['light','Light'],['dark','Dark']],scheme)+(e.variants.length?seg('variant',e.variants.map(v=>[v.id,v.label]),shownVariant):'')+'<button class="reset" id="resetTop" disabled title="Undo your edits to this email">Reset</button>'+(version==='v1'?'<button class="reset" id="previewBtn" type="button" aria-pressed="'+sampleView+'" title="Show the email with sample data">Preview</button><button class="ebtn" id="editBtn" type="button" title="Edit this email">Edit</button><span class="expwrap"><button class="reset" id="exportBtn" type="button" aria-haspopup="true" title="Export this email">Export ▾</button><div class="expmenu" id="expMenu" hidden></div></span>':'')+'</div>'
    +'<div class="problems" id="ederr" hidden></div>'
    +'<div class="views">'+(v1?'<div class="stage" style="width:'+WIDTHS[width]+'px">':'')
    +'<iframe title="Email"'+(v1?'':' src="'+emailSrc(e.id,scheme,shownVariant)+'"')+' style="width:'+WIDTHS[width]+'px;height:700px"></iframe>'+(v1?'<div class="formhost" id="formhost" hidden></div></div>':'')

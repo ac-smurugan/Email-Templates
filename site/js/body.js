@@ -1,25 +1,36 @@
 /**
- * An email's content as text a developer can edit, and back. The V1 edit form shows a body like:
+ * An email's content as Markdown a developer can edit, and back. The edit form's Body is Markdown:
  *
  *   You have ${findings.total.count} findings.
  *
- *   [stats]
- *   Critical: ${severity.critical.count}
- *   [/stats]
+ *   |          |                                |
+ *   |----------|--------------------------------|
+ *   | Critical | ${severity.critical.count}     |
  *
- * A blank line starts a new paragraph. Blocks are written between tags: `[details]`, `[stats]`
- * (one `Label: value` per line), `[list Label]` (one `- item` per line), `[quote Label]`, and
- * `[note]`. Inside text: `${name}` is a placeholder (`${name|tidy}` drops a trailing `.0` and
- * colors a rating), `**bold**`, `` `code` ``, `[link URL]text[/link]`, `[dot critical]`,
- * `[if $name]…[elseif $other]…[else]…[/if]` for text that depends on a value, and
- * `[each list as item sep=", "]…[/each]` for a repeated item. `[if $name]` alone on a line, with
- * `[/if]` alone after the block, makes a whole block conditional. A block this syntax can't write
- * (cards, tables, images…) is kept as `[keep N: Kind]`, where N is its place when the form opened.
+ * A blank line starts a new paragraph, and a line break inside one is kept. Blocks:
+ *
+ *   - paragraph        plain text, with `**bold**`, `` `code` ``, `[text](url)` and `${name}`
+ *   - heading          `# text` (written as a bold paragraph)
+ *   - note             `<small>smaller, muted text</small>`
+ *   - quote            `> text`, with `> [!Label]` first for a label
+ *   - list             `- item` lines, with a `**Label**` line directly above for its label
+ *   - details          a table with an empty header: one `| Label | value |` row per fact
+ *   - stats            a table with the labels as its header and one row of values
+ *   - image            `![description](source)`
+ *
+ * What Markdown can't say is written as HTML comments, so the Markdown still reads and previews
+ * everywhere else: `<!-- if $name -->…<!-- elseif $other -->…<!-- else -->…<!-- /if -->` for text
+ * that depends on a value (alone on a line, around a block, for a whole block);
+ * `<!-- each list as item sep=", " -->…<!-- /each -->` for a repeated item; `<!-- dot critical -->`
+ * for a severity dot; `<!-- when $name -->` at the start of a table row's first cell, for a row
+ * that only shows when its value is there; and `<!-- keep N: kind -->` for a block this syntax
+ * can't write (cards, tables of findings…), where N is its place when the form opened. `${name|…}`
+ * is written `$tidy{name}`: a trailing `.0` is dropped and a rating name colored.
  *
  * The preview serves this file, with its types stripped, to run in the browser.
  */
 import { Cond, Vtl, plain, v } from './placeholders.js';
-                                                              
+                                                                     
 
                                                  
 
@@ -37,7 +48,7 @@ function placeholder(name        , engine        )      {
   return v(name);
 }
 
-const vtlText = (value     ) => (TOKEN.test(value.text) ? `\${${value.text.match(TOKEN) [1]}}` : value.text);
+export const vtlText = (value     ) => (TOKEN.test(value.text) ? `\${${value.text.match(TOKEN) [1]}}` : value.text);
 
 // ——— Rich text to text ———
 
@@ -48,15 +59,15 @@ export function serializeRich(rich                  )         {
       if (part instanceof Vtl) return vtlText(part);
       if ('strong' in part) return `**${serializeRich(part.strong)}**`;
       if ('code' in part) return `\`${serializeRich(part.code)}\``;
-      if ('tidy' in part) return `\${${part.tidy}|tidy}`;
-      if ('rating' in part) return `[dot ${part.rating}]`;
-      if ('ratingOf' in part) return `[dot \${${part.ratingOf}}]`;
-      if ('link' in part) return `[link ${hrefToText(part.url)}]${serializeRich(part.link)}[/link]`;
+      if ('tidy' in part) return `$tidy{${part.tidy}}`;
+      if ('rating' in part) return `<!-- dot ${part.rating} -->`;
+      if ('ratingOf' in part) return `<!-- dot \${${part.ratingOf}} -->`;
+      if ('link' in part) return `[${serializeRich(part.link)}](${hrefToText(part.url)})`;
       if ('each' in part)
-        return `[each ${part.each.list} as ${part.each.as}${part.separator ? ` sep="${part.separator}"` : ''}]${serializeRich(part.item)}[/each]`;
+        return `<!-- each ${part.each.list} as ${part.each.as}${part.separator ? ` sep="${part.separator}"` : ''} -->${serializeRich(part.item)}<!-- /each -->`;
       if ('choose' in part) {
-        const branches = part.choose.map(([cond, then], i) => `[${i ? 'elseif' : 'if'} ${cond.expr}]${serializeRich(then)}`).join('');
-        return `${branches}${part.else !== undefined ? `[else]${serializeRich(part.else)}` : ''}[/if]`;
+        const branches = part.choose.map(([cond, then], i) => `<!-- ${i ? 'elseif' : 'if'} ${cond.expr} -->${serializeRich(then)}`).join('');
+        return `${branches}${part.else !== undefined ? `<!-- else -->${serializeRich(part.else)}` : ''}<!-- /if -->`;
       }
       return '';
     })
@@ -85,12 +96,12 @@ const simplify = (nodes          )       => (nodes.length === 1 && typeof nodes[
 export function parseRich(src        , engine        )       {
   let i = 0;
   const at = (s        ) => src.startsWith(s, i);
-  /** The text from `i` up to the matching `]`, with `i` after it. */
-  const bracket = ()         => {
-    const end = src.indexOf(']', i);
-    if (end < 0) throw new Error('A [ tag is missing its ]');
+  /** The text from `i` up to ` -->`, with `i` after it. */
+  const comment = ()         => {
+    const end = src.indexOf(' -->', i);
+    if (end < 0) throw new Error('An <!-- comment --> is missing its -->');
     const inner = src.slice(i, end);
-    i = end + 1;
+    i = end + 4;
     return inner;
   };
 
@@ -107,11 +118,16 @@ export function parseRich(src        , engine        )       {
         flush();
         return { nodes: out, stop };
       }
-      const placeholderMatch = src.slice(i).match(/^\$\{([^{}]+)\}/);
-      if (placeholderMatch) {
+      const rest = src.slice(i);
+      const tidy = rest.match(/^\$tidy\{([^{}]+)\}/);
+      const placeholderMatch = rest.match(/^\$\{([^{}]+)\}/);
+      if (tidy) {
         flush();
-        const name = placeholderMatch[1] ;
-        out.push(name.endsWith('|tidy') ? { tidy: name.slice(0, -5) } : placeholder(name, engine));
+        out.push({ tidy: tidy[1]  });
+        i += tidy[0].length;
+      } else if (placeholderMatch) {
+        flush();
+        out.push(placeholder(placeholderMatch[1] , engine));
         i += placeholderMatch[0].length;
       } else if (at('**')) {
         flush();
@@ -122,54 +138,53 @@ export function parseRich(src        , engine        )       {
       } else if (at('`') && src.indexOf('`', i + 1) > 0) {
         flush();
         const end = src.indexOf('`', i + 1);
-        const inner = parseRich(src.slice(i + 1, end), engine);
-        out.push({ code: inner });
+        out.push({ code: parseRich(src.slice(i + 1, end), engine) });
         i = end + 1;
-      } else if (at('[if ')) {
+      } else if (at('<!-- if ')) {
         flush();
         const choose                 = [];
         let otherwise                  ;
-        i += 4;
-        let expr = bracket();
+        i += 8;
+        let expr = comment();
         for (;;) {
-          const branch = until(['[elseif ', '[else]', '[/if]']);
+          const branch = until(['<!-- elseif ', '<!-- else -->', '<!-- /if -->']);
           choose.push([new Cond(expr), simplify(branch.nodes)]);
-          if (branch.stop === '[elseif ') {
-            i += 8;
-            expr = bracket();
-          } else if (branch.stop === '[else]') {
-            i += 6;
-            const rest = until(['[/if]']);
+          if (branch.stop === '<!-- elseif ') {
+            i += 12;
+            expr = comment();
+          } else if (branch.stop === '<!-- else -->') {
+            i += 13;
+            const rest = until(['<!-- /if -->']);
             otherwise = simplify(rest.nodes);
-            if (rest.stop) i += 5;
+            if (rest.stop) i += 12;
             break;
           } else {
-            if (branch.stop) i += 5;
+            if (branch.stop) i += 12;
             break;
           }
         }
         out.push({ choose, ...(otherwise !== undefined ? { else: otherwise } : {}) });
-      } else if (at('[each ')) {
+      } else if (at('<!-- each ')) {
         flush();
-        i += 6;
-        const header = bracket().match(/^(\S+) as (\S+)(?: sep="([^"]*)")?$/);
-        if (!header) throw new Error('[each] needs: [each list as item]');
-        const inner = until(['[/each]']);
-        if (inner.stop) i += 7;
+        i += 10;
+        const header = comment().match(/^(\S+) as (\S+)(?: sep="([^"]*)")?$/);
+        if (!header) throw new Error('<!-- each --> needs: <!-- each list as item -->');
+        const inner = until(['<!-- /each -->']);
+        if (inner.stop) i += 14;
         out.push({ each: { list: header[1] , as: header[2]  }, item: simplify(inner.nodes), ...(header[3] ? { separator: header[3] } : {}) });
-      } else if (at('[link ')) {
+      } else if (at('<!-- dot ')) {
         flush();
-        i += 6;
-        const url = bracket();
-        const inner = until(['[/link]']);
-        if (inner.stop) i += 7;
-        out.push({ link: simplify(inner.nodes), url: parseHref(url, engine) });
-      } else if (at('[dot ')) {
-        flush();
-        i += 5;
-        const what = bracket().trim();
+        i += 9;
+        const what = comment().trim();
         const named = what.match(/^\$\{([^{}]+)\}$/);
         out.push(named ? { ratingOf: named[1]  } : { rating: what               });
+      } else if (at('[') && /^\[[^\]\n]*\]\([^)\n]*\)/.test(rest)) {
+        // A link: [text](address).
+        flush();
+        const close = src.indexOf('](', i);
+        const end = src.indexOf(')', close);
+        out.push({ link: parseRich(src.slice(i + 1, close), engine), url: parseHref(src.slice(close + 2, end), engine) });
+        i = end + 1;
       } else {
         text += src[i];
         i++;
@@ -179,62 +194,92 @@ export function parseRich(src        , engine        )       {
     return { nodes: out, stop: null };
   };
 
-  const result = until([]);
-  return simplify(result.nodes);
+  return simplify(until([]).nodes);
 }
 
-// ——— Blocks to text ———
+// ——— Blocks to Markdown ———
 
                                                                                
 
-const rowText = (row     ) => {
-  const line = `${row.label}: ${serializeRich(row.value)}`;
-  return row.when ? `[if ${row.when.expr}]${line}[/if]` : line;
-};
+/** A label, with its condition ahead of it when the row only shows when a value is there. */
+const labelCell = (row     ) => `${row.when ? `<!-- when ${row.when.expr} -->` : ''}${row.label}`;
+const rowLine = (cells          ) => `| ${cells.join(' | ')} |`;
 
-function blockText(block       , index        )         {
+function blockMarkdown(block       , index        )         {
   let text        ;
   switch (block.kind) {
     case 'text':
-      text = block.quiet ? `[note]\n${serializeRich(block.text)}\n[/note]` : serializeRich(block.text);
+      text = block.quiet ? `<small>${serializeRich(block.text)}</small>` : serializeRich(block.text);
       break;
     case 'quote':
-      text = `[quote${block.label ? ` ${block.label}` : ''}]\n${serializeRich(block.text)}\n[/quote]`;
+      text = [...(block.label ? [`[!${block.label}]`] : []), ...serializeRich(block.text).split('\n')].map((line) => `> ${line}`).join('\n');
       break;
     case 'details':
-      text = `[details]\n${(block.rows         ).map(rowText).join('\n')}\n[/details]`;
+      text = ['|   |   |', '|---|---|', ...(block.rows         ).map((row) => rowLine([labelCell(row), serializeRich(row.value)]))].join('\n');
       break;
-    case 'stats':
-      text = `[stats]\n${(block.items         ).map(rowText).join('\n')}\n[/stats]`;
+    case 'stats': {
+      const items = block.items         ;
+      text = [rowLine(items.map(labelCell)), rowLine(items.map(() => '---')), rowLine(items.map((item) => serializeRich(item.value)))].join('\n');
       break;
+    }
     case 'list':
       text =
         'items' in block
-          ? `[list ${serializeRich(block.label)}]\n${block.items.map((item) => `- ${serializeRich(item)}`).join('\n')}\n[/list]`
-          : `[list ${serializeRich(block.label)} each ${block.each.list} as ${block.each.as}]\n- ${serializeRich(block.item)}\n[/list]`;
+          ? [...(serializeRich(block.label) ? [`**${serializeRich(block.label)}**`] : []), ...block.items.map((item) => `- ${serializeRich(item)}`)].join('\n')
+          : `<!-- keep ${index}: list -->`;
       break;
     default:
-      text = `[keep ${index}: ${block.kind}]`;
+      text = `<!-- keep ${index}: ${block.kind} -->`;
   }
-  return block.when ? `[if ${block.when.expr}]\n${text}\n[/if]` : text;
+  return block.when ? `<!-- if ${block.when.expr} -->\n${text}\n<!-- /if -->` : text;
 }
 
-/** The blocks as the body text of the edit form. */
-export function blocksToText(blocks                  )         {
-  return blocks.map(blockText).join('\n\n');
+/** The blocks as the Markdown body of the edit form. */
+export function blocksToMarkdown(blocks                  )         {
+  return blocks.map(blockMarkdown).join('\n\n');
 }
 
-// ——— Text to blocks ———
+const quoted = (value        ) => JSON.stringify(value);
 
-const OPENERS = /^\[(details|stats|note|quote|list|keep|if)\b/;
-const wrapperIf = (line        ) => /^\[if [^\]]+\]$/.test(line.trim());
+/** A whole email as Markdown: its settings as a short header, then the body. */
+export function emailToMarkdown(email       )         {
+  const link = email.action ?? email.secondary;
+  const header = [
+    `subject: ${quoted(serializeRich(email.subject))}`,
+    `preview: ${quoted(serializeRich(email.preview))}`,
+    `eyebrow: ${quoted(email.eyebrow)}`,
+    `tone: ${email.tone}`,
+    `title: ${quoted(serializeRich(email.title))}`,
+    ...(email.subtitle !== undefined ? [`subtitle: ${quoted(serializeRich(email.subtitle))}`] : []),
+    `cta: ${email.action ? 'button' : email.secondary ? 'link' : 'none'}`,
+    ...(link ? [`cta_text: ${quoted(serializeRich(link.label))}`, `cta_url: ${quoted(hrefToText(link.url))}`] : []),
+    `footer: ${quoted(serializeRich(email.reason))}`,
+  ];
+  return `---\n${header.join('\n')}\n---\n\n${blocksToMarkdown(email.blocks)}\n`;
+}
+
+// ——— Markdown to blocks ———
+
+const WRAPPER_IF = /^<!-- if ((?:(?! -->).)+) -->$/;
+const BULLET = /^[-*] /;
+/** Lines that start a block of their own, so a paragraph before them ends. */
+const STARTS_BLOCK = (line        ) =>
+  /^(\||>|#{1,6}\s|!\[)/.test(line) || BULLET.test(line) || /^<!-- keep /.test(line) || WRAPPER_IF.test(line) || line === '<!-- /if -->';
+
+const cells = (line        ) =>
+  line
+    .trim()
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim());
 
 /**
- * The body text back into blocks. `originals` are the blocks the form opened with: `[keep N]` brings
- * back the Nth, and a details or stats row with a label it had keeps its settings (when, rating…).
- * `clone` copies a block, so a kept one isn't shared.
+ * The Markdown body back into blocks. `originals` are the blocks the form opened with: `<!-- keep N -->`
+ * brings back the Nth, and a details or stats row with a label it had keeps its settings (when,
+ * rating…). `clone` copies a block, so a kept one isn't shared.
  */
-export function textToBlocks(text        , originals                  , engine        , clone                    )          {
+export function markdownToBlocks(text        , originals                  , engine        , clone                    )          {
   const lines = text.replace(/\r\n?/g, '\n').split('\n');
   let at = 0;
   const seen                         = {};
@@ -246,23 +291,39 @@ export function textToBlocks(text        , originals                  , engine  
     return found?.rows ?? found?.items ?? [];
   };
 
-  const rows = (closing        , was       )        => {
-    const out        = [];
-    while (at < lines.length && lines[at] .trim() !== closing) {
-      const raw = lines[at++] .trim();
-      if (!raw) continue;
-      const conditional = raw.match(/^\[if ([^\]]+)\](.*)\[\/if\]$/);
-      const line = conditional ? conditional[2]  : raw;
-      const colon = line.indexOf(': ');
-      const label = colon < 0 ? line : line.slice(0, colon);
-      const row      = { ...(was.find((r) => r.label === label) ?? {}), label, value: parseRich(colon < 0 ? '' : line.slice(colon + 2), engine) };
-      if (conditional) row.when = new Cond(conditional[1] );
-      else delete row.when;
-      out.push(row);
+  /** A label cell: its condition, and the label. */
+  const label = (cell        )                                 => {
+    const when = cell.match(/^<!-- when ((?:(?! -->).)+) -->(.*)$/);
+    return when ? { label: when[2] .trim(), when: new Cond(when[1] ) } : { label: cell };
+  };
+
+  const table = ()        => {
+    const rows             = [];
+    while (at < lines.length && lines[at] .trim().startsWith('|')) rows.push(cells(lines[at++] ));
+    if (rows.length < 2 || !rows[1] .every((cell) => /^:?-{1,}:?$/.test(cell)))
+      throw new Error('A table needs a header row and a |---|---| row under it');
+    const [header, , ...body] = rows                                       ;
+    if (header.every((cell) => cell === '')) {
+      const was = original('details');
+      const out = body.map(([cell = '', value = '']) => {
+        const { label: name, when } = label(cell);
+        const row      = { ...(was.find((r) => r.label === name) ?? {}), label: name, value: parseRich(value, engine) };
+        if (when) row.when = when;
+        else delete row.when;
+        return row;
+      });
+      return { kind: 'details', rows: out }                    ;
     }
-    if (at >= lines.length) throw new Error(`Missing ${closing}`);
-    at++;
-    return out;
+    if (body.length !== 1) throw new Error('A stats table has one row of values under its labels');
+    const was = original('stats');
+    const items = header.map((cell, i) => {
+      const { label: name, when } = label(cell);
+      const item      = { ...(was.find((r) => r.label === name) ?? {}), label: name, value: parseRich(body[0] [i] ?? '', engine) };
+      if (when) item.when = when;
+      else delete item.when;
+      return item;
+    });
+    return { kind: 'stats', items }                    ;
   };
 
   const block = ()               => {
@@ -270,64 +331,59 @@ export function textToBlocks(text        , originals                  , engine  
     if (at >= lines.length) return null;
     const line = lines[at] .trim();
 
-    if (wrapperIf(line)) {
-      const expr = line.slice(4, -1);
+    // A whole block that only shows when a value is there.
+    const wrapper = line.match(WRAPPER_IF);
+    if (wrapper) {
       at++;
       const inner = block();
       while (at < lines.length && !lines[at] .trim()) at++;
-      if (lines[at]?.trim() !== '[/if]') throw new Error('Missing [/if] after a conditional block');
+      if (lines[at]?.trim() !== '<!-- /if -->') throw new Error('Missing <!-- /if --> after a conditional block');
       at++;
       if (!inner) throw new Error('A conditional block needs a block inside it');
-      return { ...inner, when: new Cond(expr) }         ;
+      return { ...inner, when: new Cond(wrapper[1] ) }         ;
     }
-    if (line === '[details]') {
-      at++;
-      return { kind: 'details', rows: rows('[/details]', original('details')) }                    ;
-    }
-    if (line === '[stats]') {
-      at++;
-      return { kind: 'stats', items: rows('[/stats]', original('stats')) }                    ;
-    }
-    const wrapped = line.match(/^\[(note|quote)(?: (.*))?\]$/);
-    if (wrapped) {
-      at++;
-      const inner           = [];
-      while (at < lines.length && lines[at] .trim() !== `[/${wrapped[1]}]`) inner.push(lines[at++] );
-      if (at >= lines.length) throw new Error(`Missing [/${wrapped[1]}]`);
-      at++;
-      const text = parseRich(inner.join('\n').trim(), engine);
-      return wrapped[1] === 'note'
-        ? ({ kind: 'text', quiet: true, text }         )
-        : ({ kind: 'quote', ...(wrapped[2] ? { label: wrapped[2] } : {}), text }         );
-    }
-    const list = line.match(/^\[list(?: (.*?))?(?: each (\S+) as (\S+))?\]$/);
-    if (list) {
-      at++;
-      const items           = [];
-      while (at < lines.length && lines[at] .trim() !== '[/list]') {
-        const item = lines[at++] .trim();
-        if (item) items.push(item.replace(/^- ?/, ''));
-      }
-      if (at >= lines.length) throw new Error('Missing [/list]');
-      at++;
-      const label = parseRich(list[1] ?? '', engine);
-      return list[2]
-        ? ({ kind: 'list', label, each: { list: list[2], as: list[3]  }, item: parseRich(items[0] ?? '', engine) }                    )
-        : ({ kind: 'list', label, items: items.map((item) => parseRich(item, engine)) }         );
-    }
-    const keep = line.match(/^\[keep (\d+)(?::[^\]]*)?\]$/);
+    const keep = line.match(/^<!-- keep (\d+)(?::[^>]*)? -->$/);
     if (keep) {
       at++;
       const found = originals[Number(keep[1])];
-      if (!found) throw new Error(`[keep ${keep[1]}] has no block to keep`);
+      if (!found) throw new Error(`<!-- keep ${keep[1]} --> has no block to keep`);
       return clone(found);
     }
-    // A paragraph: lines up to a blank line or the next block.
-    const paragraph           = [];
-    while (at < lines.length && lines[at] .trim() && lines[at] .trim() !== '[/if]' && !(paragraph.length > 0 && OPENERS.test(lines[at] .trim()) && (!lines[at] .trim().startsWith('[if') || wrapperIf(lines[at] )))) {
-      paragraph.push(lines[at++] );
+    if (line.startsWith('|')) return table();
+    if (line.startsWith('>')) {
+      const quote           = [];
+      while (at < lines.length && lines[at] .trim().startsWith('>')) quote.push(lines[at++] .trim().replace(/^>\s?/, ''));
+      const named = quote[0]?.match(/^\[!(.+)\]$/);
+      const body = parseRich((named ? quote.slice(1) : quote).join('\n'), engine);
+      return { kind: 'quote', ...(named ? { label: named[1] } : {}), text: body }         ;
     }
-    return { kind: 'text', text: parseRich(paragraph.join('\n'), engine) }         ;
+    const heading = line.match(/^#{1,6}\s+(.*)$/);
+    if (heading) {
+      at++;
+      return { kind: 'text', text: { strong: parseRich(heading[1] , engine) } }         ;
+    }
+    const image = line.match(/^!\[(.*?)\]\((.*?)\)$/);
+    if (image) {
+      at++;
+      return { kind: 'image', src: parseHref(image[2] , engine), alt: image[1] , width: 520 }                    ;
+    }
+    // A list, with a bold line directly above it for its label.
+    const bold = line.match(/^\*\*(.+)\*\*$/);
+    const listLabel = bold && BULLET.test(lines[at + 1]?.trim() ?? '') ? bold[1]  : null;
+    if (listLabel !== null || BULLET.test(line)) {
+      if (listLabel !== null) at++;
+      const items           = [];
+      while (at < lines.length && BULLET.test(lines[at] .trim())) items.push(lines[at++] .trim().replace(BULLET, ''));
+      return { kind: 'list', label: parseRich(listLabel ?? '', engine), items: items.map((item) => parseRich(item, engine)) }         ;
+    }
+    // A paragraph: lines up to a blank line or the next block.
+    const paragraph = [lines[at++] ];
+    while (at < lines.length && lines[at] .trim() && !STARTS_BLOCK(lines[at] .trim())) paragraph.push(lines[at++] );
+    const joined = paragraph.join('\n').trim();
+    const small = joined.match(/^<small>([\s\S]*)<\/small>$/);
+    return small
+      ? ({ kind: 'text', quiet: true, text: parseRich(small[1] , engine) }         )
+      : ({ kind: 'text', text: parseRich(paragraph.join('\n'), engine) }         );
   };
 
   const out          = [];
